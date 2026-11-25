@@ -1421,6 +1421,121 @@ function applyPlan(raw, replaceMenu) {
 async function loadExample() {
   try { const r = await fetch('modello/piano-esempio.json', { cache: 'no-cache' }); if (!r.ok) throw 0; return await r.json() } catch (e) { return null }
 }
+/* ---------- Piano su misura: fabbisogno (Mifflin-St Jeor) + dieta mediterranea adattata alle condizioni ---------- */
+const ATT = { sedentario: ['Sedentaria', 1.2], leggero: ['Leggera (sport 1-3 volte/sett.)', 1.375], moderato: ['Moderata (3-5 volte/sett.)', 1.55], intenso: ['Intensa (6-7 volte/sett.)', 1.725] };
+const OBI = { perdere: ['Dimagrire', -400], mantenere: ['Mantenere', 0], aumentare: ['Aumentare', 300] };
+const round50 = x => Math.round(x / 50) * 50;
+function energia(d) {
+  const miss = [];
+  if (!['F', 'M'].includes(d.sesso)) miss.push('sesso'); if (!(d.eta > 0)) miss.push('età'); if (!(d.peso > 0)) miss.push('peso'); if (!(d.altezza > 0)) miss.push('altezza');
+  if (!ATT[d.attivita]) miss.push('attività'); if (!OBI[d.obiettivo]) miss.push('obiettivo');
+  if (miss.length) return { err: 'Mancano: ' + miss.join(', ') + '.' };
+  if (d.eta < 18) return { err: 'Per chi ha meno di 18 anni il piano va fatto con il pediatra o un nutrizionista: Appanzay non lo calcola.' };
+  const notes = [], bmi = d.peso / (d.altezza / 100) ** 2;
+  const bmr = 10 * d.peso + 6.25 * d.altezza - 5 * d.eta + (d.sesso === 'M' ? 5 : -161);
+  const tdee = bmr * ATT[d.attivita][1];
+  let adj = OBI[d.obiettivo][1];
+  if ((d.cond || []).includes('gravidanza')) { if (adj < 0) adj = 0; notes.push('In gravidanza non si cerca di perdere peso e il fabbisogno cambia trimestre per trimestre: fai controllare le calorie dal ginecologo.') }
+  if (bmi < 18.5 && adj < 0) { adj = 0; notes.push('Con un indice di massa corporea sotto 18,5 non calcolo un piano per perdere peso: ho usato il mantenimento.') }
+  let kcal = round50(tdee + adj);
+  const min = d.sesso === 'M' ? 1500 : 1200;
+  if (kcal < min) { kcal = min; notes.push(`Non scendo sotto ${fmt(min)} kcal al giorno senza un professionista.`) }
+  return { kcal, bmr: Math.round(bmr), tdee: Math.round(tdee), bmi, notes };
+}
+const r5 = x => Math.max(5, Math.round(x / 5) * 5);
+function buildCustomPlan(base, d, en) {
+  const E = clone(base), hits = new Map();
+  (d.cond || []).forEach(id => { const c = condById.get(id); if (c) c.righe.forEach(r => r.foods.forEach(nm => { const f = catByNorm.get(norm(nm)), k = norm(f ? f.n : nm); if (RANK[r.s] > RANK[hits.get(k) || 'none']) hits.set(k, r.s) })) });
+  const stC = n => { const f = catByNorm.get(norm(n)); return hits.get(norm(f ? f.n : n)) || 'none' };
+  const kOf = n => { const f = catByNorm.get(norm(n)); return f ? f.k : 0 };
+  const subs = [], removed = [], tipo = {};
+  (E.pasti || []).forEach(m => { tipo[m.id] = m.tipo });
+  const days = Object.keys(E.menu || {}), gName = g => { const i = GIORNI.indexOf(g); return i >= 0 && typeof WD !== 'undefined' ? WD[i] : g };
+  days.forEach((g, di) => Object.keys(E.menu[g]).forEach((mid, mi) => {
+    const v = E.menu[g][mid], list = Array.isArray(v) ? v : v.alimenti, comps = (E.equivalenze || {})[tipo[mid]] || [];
+    for (let i = 0; i < list.length; i++) {
+      const it = list[i], sIt = stC(it.alimento); if (sIt === 'none') continue;
+      const c = comps.find(c => c.opzioni.some(o => o.some(x => norm(x.alimento) === norm(it.alimento))));
+      const inMeal = new Set(list.map(x => norm(x.alimento)));
+      let cand = c ? c.opzioni.filter(o => o.every(x => stC(x.alimento) !== 'no') && !o.some(x => inMeal.has(norm(x.alimento)))) : [];
+      const good = cand.filter(o => o.every(x => stC(x.alimento) === 'none')); if (good.length) cand = good;
+      if (sIt === 'warn' && !good.length) continue; // sconsigliato: si cambia solo se c'è un'alternativa senza limiti
+      if (!cand.length) { removed.push(`${gName(g)} · ${it.alimento}`); list.splice(i, 1); i--; continue }
+      const orig = c.opzioni.find(o => o.some(x => norm(x.alimento) === norm(it.alimento)));
+      const pick = cand[(di + mi) % cand.length];
+      const drop = new Set(orig.map(x => norm(x.alimento)));
+      const at = list.findIndex(x => drop.has(norm(x.alimento)));
+      for (let j = list.length - 1; j >= 0; j--) if (drop.has(norm(list[j].alimento))) list.splice(j, 1);
+      list.splice(Math.max(0, at), 0, ...clone(pick));
+      subs.push(`${gName(g)} · ${orig.map(x => x.alimento).join(' + ')} → ${pick.map(x => x.alimento).join(' + ')}`);
+      if (!Array.isArray(v) && c.ruolo === 'amido') delete v.formato;
+      i = -1;
+    }
+  }));
+  const dayK = days.map(g => Object.values(E.menu[g]).reduce((a, v) => a + (Array.isArray(v) ? v : v.alimenti).reduce((b, x) => b + x.grammi * kOf(x.alimento) / 100, 0), 0));
+  const avg = dayK.reduce((a, b) => a + b, 0) / (dayK.length || 1);
+  const raw = avg ? en.kcal / avg : 1, factor = Math.min(1.8, Math.max(0.7, raw));
+  const sc = x => { if (x.quantita && x.unita) { const q = Math.max(1, Math.round(x.quantita * factor)); x.grammi = Math.round(x.grammi / x.quantita * q); x.quantita = q } else x.grammi = r5(x.grammi * factor) };
+  days.forEach(g => Object.values(E.menu[g]).forEach(v => (Array.isArray(v) ? v : v.alimenti).forEach(sc)));
+  Object.values(E.equivalenze || {}).forEach(cs => cs.forEach(c => c.opzioni.forEach(o => o.forEach(sc))));
+  (E.frequenze || []).forEach(f => { if (f.grammi_minimi) f.grammi_minimi = r5(f.grammi_minimi * factor) });
+  E.obiettivi = Object.assign({}, E.obiettivi, { kcal: en.kcal });
+  const cn = (d.cond || []).map(id => (condById.get(id) || {}).n).filter(Boolean);
+  const fx = factor.toLocaleString('it-IT', { maximumFractionDigits: 2 });
+  E.info = { nome: `Piano su misura · ${fmt(en.kcal)} kcal`, autore: 'Appanzay', data: ymd(new Date()),
+    note: `Base: dieta mediterranea con porzioni ×${fx}. Fabbisogno stimato con la formula di Mifflin-St Jeor da sesso, età, peso, altezza, attività e obiettivo.${cn.length ? ' Adattato a: ' + cn.join(', ') + '.' : ''} Non è un piano medico: con patologie o obiettivi importanti fatti seguire da un professionista.`,
+    origine: { tipo: 'su-misura', kcal: en.kcal, fattore: Math.round(factor * 100) / 100, condizioni: d.cond || [] } };
+  return { raw: E, subs, removed, factor, clamped: raw !== factor, avg: Math.round(avg) };
+}
+function custDataFrom(p) {
+  const v = id => ($(p + id) || {}).value, n = id => +String(v(id) || '').replace(',', '.');
+  const sx = document.querySelector(`input[name=${p}cuS]:checked`);
+  return { sesso: sx ? sx.value : '', eta: Math.round(n('cuE')), peso: Math.round(n('cuP') * 10) / 10, altezza: Math.round(n('cuH')), attivita: v('cuA'), obiettivo: v('cuO'),
+    cond: [...document.querySelectorAll(`input[name=${p}cond]:checked`)].map(x => x.value) };
+}
+function custReport(r, en, where) {
+  const list = (arr, n) => arr.length ? `<ul class="chk">${arr.slice(0, n).map(x => `<li>${esc(x)}</li>`).join('')}${arr.length > n ? `<li>…e altre ${arr.length - n}</li>` : ''}</ul>` : '';
+  return `<div class="planchk ok"><strong>Il tuo piano: ${fmt(en.kcal)} kcal al giorno</strong>
+   <p class="small">Metabolismo a riposo circa ${fmt(en.bmr)} kcal · con la tua attività circa ${fmt(en.tdee)} kcal · indice di massa corporea ${en.bmi.toLocaleString('it-IT', { maximumFractionDigits: 1 })}.</p>
+   ${en.notes.map(x => `<p class="small warnline">${esc(x)}</p>`).join('')}
+   <p class="small">Porzioni della dieta mediterranea moltiplicate per ${r.factor.toLocaleString('it-IT', { maximumFractionDigits: 2 })}.${r.clamped ? ' Non vado oltre questo limite: per un fabbisogno così diverso serve un piano fatto da un professionista.' : ''}</p>
+   ${r.subs.length ? `<p class="small">Sostituzioni per le tue condizioni (${r.subs.length}):</p>${list(r.subs, 6)}` : ''}
+   ${r.removed.length ? `<p class="small">Tolti senza alternativa (${r.removed.length}):</p>${list(r.removed, 6)}` : ''}
+   <p class="small muted">È un punto di partenza generico, non un piano medico. Con una patologia il piano va fatto o controllato da un professionista.</p>
+   ${where === 'account' && PL ? '<p class="small">Sostituisce il piano e il menù della settimana attuali.</p>' : ''}
+   <button class="btn pri wide" type="button" data-act="customapply" data-w="${where}">Usa questo piano</button></div>`;
+}
+const pfx = where => where === 'onboard' ? 'ob' : 'pl';
+const CHOOSE = {};
+function customForm(where) {
+  const p = pfx(where), st = S.settings, on = new Set(SALUTE.cond || []);
+  const sel = (id, obj, cur) => `<select id="${p}${id}"><option value="">Scegli…</option>${Object.entries(obj).map(([k, [l]]) => `<option value="${k}"${cur === k ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+  return `<div class="custform">
+   <fieldset class="segr"><legend>Sesso</legend>${[['F', 'Donna'], ['M', 'Uomo']].map(([v, l]) => `<label><input type="radio" name="${p}cuS" value="${v}"${st.sesso === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
+   <div class="three"><div><label for="${p}cuE">Età</label><input type="number" id="${p}cuE" min="10" max="110" inputmode="numeric" value="${st.eta ?? ''}"></div>
+   <div><label for="${p}cuP">Peso (kg)</label><input type="number" id="${p}cuP" min="30" max="300" step="0.1" inputmode="decimal" value="${st.peso ?? ''}"></div>
+   <div><label for="${p}cuH">Altezza (cm)</label><input type="number" id="${p}cuH" min="100" max="230" inputmode="numeric" value="${st.altezza ?? ''}"></div></div>
+   <label for="${p}cuA">Attività fisica</label>${sel('cuA', ATT, st.attivita)}
+   <label for="${p}cuO">Obiettivo</label>${sel('cuO', OBI, st.obiettivo)}
+   <p class="lab">Intolleranze, allergie e patologie</p>
+   ${COND_GROUPS.map(g => { const cs = CONDS.filter(c => c.g === g); const nOn = cs.filter(c => on.has(c.id)).length; return cs.length ? `<details class="condg2"${nOn ? ' open' : ''}><summary>${esc(g)}${nOn ? ` · ${nOn}` : ''}</summary>${cs.map(c => `<label class="condrow"><input type="checkbox" name="${p}cond" value="${esc(c.id)}"${on.has(c.id) ? ' checked' : ''}><span>${esc(c.n)}</span></label>`).join('')}</details>` : '' }).join('')}
+   <p class="bad small" id="${p}CuErr" hidden></p>
+   <button class="btn pri wide" type="button" data-act="custombuild" data-w="${where}">Crea il mio piano</button>
+   <div id="${p}CuRes"></div></div>`;
+}
+function chooserPanel(where) {
+  const m = CHOOSE[where];
+  if (m === 'piano') return planSteps(where);
+  if (m === 'med') return `<div class="medbox"><p>Un piano equilibrato da circa <strong>1700 kcal</strong> con 5 pasti al giorno, il menù di tutta la settimana e le alternative per ogni pasto. Puoi cambiarlo quando vuoi.</p>${where === 'account' && PL ? '<p class="small">Sostituisce il piano e il menù della settimana attuali.</p>' : ''}<button class="btn pri wide" type="button" data-act="planexample" data-w="${where}">Comincia con la dieta mediterranea</button></div>`;
+  if (m === 'custom') return customForm(where);
+  return '';
+}
+function planChooser(where) {
+  const m = CHOOSE[where], p = pfx(where);
+  const opt = (v, t, d) => `<button class="opt${m === v ? ' on' : ''}" type="button" data-act="obpick" data-w="${where}" data-v="${v}" aria-expanded="${m === v}"><strong>${t}</strong><span>${d}</span></button>`;
+  return `<div class="choose">${opt('piano', 'Ho già un piano', 'Lo trasformo con la mia AI e lo carico')}${opt('med', 'Dieta mediterranea', 'Un piano equilibrato pronto da usare')}${opt('custom', 'Piano su misura', 'Dai miei dati, intolleranze e patologie')}</div>
+   <div id="${p}Panel" class="chpanel">${chooserPanel(where)}</div>`;
+}
 function planSteps(where) {
   const on = where === 'onboard';
   return `<ol class="steps">
@@ -1436,16 +1551,15 @@ function planSteps(where) {
    </ol>`;
 }
 function renderOnboard() {
-  $('obBody').innerHTML = `${planSteps('onboard')}
+  $('obBody').innerHTML = `${planChooser('onboard')}
    <div id="obCheck"></div>
-   <div class="obalt"><button class="btn ghost wide" type="button" data-act="planexample">Prova con il piano di esempio</button>
-   ${fbUser ? `<button class="linkbtn" type="button" data-act="logout">Esci da ${esc(fbUser.email || 'questo account')}</button>` : ''}</div>`;
+   ${fbUser ? `<div class="obalt"><button class="linkbtn" type="button" data-act="logout">Esci da ${esc(fbUser.email || 'questo account')}</button></div>` : ''}`;
 }
 function planCard() {
-  if (!PL) return `<div class="card"><h3>Il mio piano</h3><p>Non hai ancora caricato un piano.</p>${planSteps('account')}<div id="planCheck"></div></div>`;
+  if (!PL) return `<div class="card"><h3>Il mio piano</h3><p>Non hai ancora un piano.</p>${planChooser('account')}<div id="planCheck"></div></div>`;
   return `<div class="card"><h3>Il mio piano</h3>${planSummary(S.plan)}${PL.info.data ? `<p class="small muted">Data del piano: ${esc(PL.info.data)}</p>` : ''}${PL.info.note ? `<p class="small muted">${esc(PL.info.note)}</p>` : ''}
-   <div class="row2"><button class="btn" type="button" data-act="planexport">Scarica il mio piano</button></div>
-   <details class="moddet"><summary>Carica un nuovo piano</summary>${planSteps('account')}</details>
+   <div class="row2">${PL.info.origine && PL.info.origine.tipo === 'su-misura' ? '<button class="btn" type="button" data-act="custrecalc">Ricalcola con i dati attuali</button>' : ''}<button class="btn" type="button" data-act="planexport">Scarica il mio piano</button></div>
+   <details class="moddet"${CHOOSE.account ? ' open' : ''}><summary>Cambia piano</summary>${planChooser('account')}</details>
    <div id="planCheck"></div></div>`;
 }
 function afterData() {
@@ -1478,6 +1592,10 @@ function renderAccount() {
     <div class="three"><div><label for="sP">Peso (kg)</label><input type="number" id="sP" min="30" max="300" step="0.1" inputmode="decimal" value="${st.peso ?? ''}"></div>
     <div><label for="sH">Altezza (cm)</label><input type="number" id="sH" min="100" max="230" step="1" inputmode="numeric" value="${st.altezza ?? ''}"></div>
     <div><label for="sA">Età (anni)</label><input type="number" id="sA" min="10" max="110" step="1" inputmode="numeric" value="${st.eta ?? ''}"></div></div>
+    <div class="two"><div><label for="sS">Sesso</label><select id="sS"><option value="">–</option><option value="F"${st.sesso === 'F' ? ' selected' : ''}>Donna</option><option value="M"${st.sesso === 'M' ? ' selected' : ''}>Uomo</option></select></div>
+    <div><label for="sO">Obiettivo</label><select id="sO"><option value="">–</option>${Object.entries(OBI).map(([k, [l]]) => `<option value="${k}"${st.obiettivo === k ? ' selected' : ''}>${l}</option>`).join('')}</select></div></div>
+    <label for="sT">Attività fisica</label><select id="sT"><option value="">–</option>${Object.entries(ATT).map(([k, [l]]) => `<option value="${k}"${st.attivita === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    ${(en => en.err ? '' : `<p class="small">Fabbisogno stimato: <strong>${fmt(en.kcal)} kcal</strong> al giorno per il tuo obiettivo (con la tua attività circa ${fmt(en.tdee)} kcal).</p>${en.notes.map(x => `<p class="small warnline">${esc(x)}</p>`).join('')}`)(energia({ sesso: st.sesso, eta: st.eta, peso: st.peso, altezza: st.altezza, attivita: st.attivita, obiettivo: st.obiettivo, cond: SALUTE.cond || [] }))}
     ${st.peso && st.altezza ? `<p class="bmi">Indice di massa corporea: <strong>${(st.peso / (st.altezza / 100) ** 2).toLocaleString('it-IT', { maximumFractionDigits: 1 })}</strong></p>` : ''}
     <p class="small muted">${st.pesoData ? 'Peso aggiornato il ' + esc(parse(st.pesoData).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })) + '.' : ''}</p></div>
    <div class="card"><h3>Obiettivi giornalieri</h3>
@@ -1668,7 +1786,25 @@ document.addEventListener('click', async e => {
   else if (a === 'shopdel') { const n = b.dataset.n; S.shop.extra = (S.shop.extra || []).filter(x => x.n !== n); delete S.shop.checked['x:' + n]; save('shop'); renderShop() }
   else if (a === 'shopcopy') { try { await navigator.clipboard.writeText(shopText()); toast('Lista copiata: incollala dove vuoi', false) } catch (err) { toast('Copia non riuscita in questa vista', false) } }
   else if (a === 'planapply') { if (!pendingPlan) return; const rep = $('planMenu') ? $('planMenu').checked : true; const w = b.dataset.where; applyPlan(pendingPlan, rep); toast('Piano caricato: ' + (PL.info.nome || 'senza nome'), false); if (w === 'onboard') afterData(); else render() }
-  else if (a === 'planexample') { const raw = await loadExample(); if (!raw) { toast('Non riesco a scaricare il piano di esempio', false); return } applyPlan(raw, true); toast('Piano di esempio attivo: sostituiscilo con il tuo da Account', false); afterData() }
+  else if (a === 'planexample') { const raw = await loadExample(); if (!raw) { toast('Non riesco a scaricare la dieta mediterranea: controlla la connessione', false); return } applyPlan(raw, true); CHOOSE.account = null; toast('Dieta mediterranea attiva', false); afterData() }
+  else if (a === 'obpick') { const w = b.dataset.w; CHOOSE[w] = CHOOSE[w] === b.dataset.v ? null : b.dataset.v; if (w === 'onboard') { renderOnboard(); const pn = $('obPanel'); if (pn && CHOOSE[w]) pn.scrollIntoView({ block: 'start', behavior: 'smooth' }) } else render() }
+  else if (a === 'custombuild' || a === 'custrecalc') {
+    const w = a === 'custrecalc' ? 'account' : b.dataset.w, p = pfx(w), st = S.settings;
+    const d = a === 'custrecalc' ? { sesso: st.sesso, eta: st.eta, peso: st.peso, altezza: st.altezza, attivita: st.attivita, obiettivo: st.obiettivo, cond: SALUTE.cond || [] } : custDataFrom(p);
+    const out = a === 'custrecalc' ? $('planCheck') : $(p + 'CuRes'), errBox = $(p + 'CuErr');
+    if (a === 'custombuild') {
+      if (['F', 'M'].includes(d.sesso)) st.sesso = d.sesso; if (d.eta >= 10 && d.eta <= 110) st.eta = d.eta; if (d.peso >= 30 && d.peso <= 300) { if (st.peso !== d.peso) st.pesoData = ymd(new Date()); st.peso = d.peso } if (d.altezza >= 100 && d.altezza <= 230) st.altezza = d.altezza;
+      if (ATT[d.attivita]) st.attivita = d.attivita; if (OBI[d.obiettivo]) st.obiettivo = d.obiettivo; save('settings');
+      SALUTE.cond = d.cond; rebuildFoods(); save('salute');
+    }
+    const en = energia(d);
+    if (en.err) { if (errBox) { errBox.textContent = en.err + (a === 'custrecalc' ? ' Completa i dati personali.' : ''); errBox.hidden = false } else toast(en.err + ' Completa i dati personali.', false); return }
+    if (errBox) errBox.hidden = true;
+    const base = await loadExample(); if (!base) { toast('Non riesco a scaricare la dieta mediterranea: controlla la connessione', false); return }
+    const r = buildCustomPlan(base, d, en); pendingPlan = r.raw;
+    if (out) { out.innerHTML = custReport(r, en, w); out.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) }
+  }
+  else if (a === 'customapply') { if (!pendingPlan) return; const w = b.dataset.w; applyPlan(pendingPlan, true); CHOOSE.account = null; toast('Piano su misura attivo: ' + fmt(PL.obj.kcal) + ' kcal', false); if (w === 'onboard') afterData(); else render() }
   else if (a === 'planexport') {
     const txt = JSON.stringify(S.plan, null, 2);
     try { const url = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); const l = document.createElement('a'); l.href = url; l.download = 'il-mio-piano.json'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000) }
@@ -1756,6 +1892,9 @@ document.addEventListener('change', e => {
   if (t.id === 'sP') { const v = num(t.value); if (t.value === '') delete st.peso; else if (v >= 30 && v <= 300) { st.peso = Math.round(v * 10) / 10; st.pesoData = ymd(new Date()) } else { render(); return } save('settings'); render() }
   if (t.id === 'sH') { const v = num(t.value); if (t.value === '') delete st.altezza; else if (v >= 100 && v <= 230) st.altezza = Math.round(v); else { render(); return } save('settings'); render() }
   if (t.id === 'sA') { const v = num(t.value); if (t.value === '') delete st.eta; else if (v >= 10 && v <= 110) st.eta = Math.round(v); else { render(); return } save('settings'); render() }
+  if (t.id === 'sS') { if (['F', 'M'].includes(t.value)) st.sesso = t.value; else delete st.sesso; save('settings'); render() }
+  if (t.id === 'sT') { if (ATT[t.value]) st.attivita = t.value; else delete st.attivita; save('settings'); render() }
+  if (t.id === 'sO') { if (OBI[t.value]) st.obiettivo = t.value; else delete st.obiettivo; save('settings'); render() }
   if (t.id === 'imp' && t.files[0]) readImport(t.files[0]);
   if ((t.id === 'obFile' || t.id === 'planFile') && t.files[0]) { readPlanFile(t.files[0], t.id === 'obFile' ? 'onboard' : 'account'); t.value = '' }
   if (t.dataset && t.dataset.shop != null) { const k = t.dataset.shop; S.shop.checked = S.shop.checked || {}; if (t.checked) S.shop.checked[k] = true; else delete S.shop.checked[k]; save('shop'); renderShop() }

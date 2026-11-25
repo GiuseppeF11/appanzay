@@ -2,10 +2,10 @@
   "formato": "appanzay-piano",
   "versione": 1,
   "info": {
-    "nome": "Esempio – dieta mediterranea 1700 kcal",
-    "autore": "Esempio di formato: non è un piano reale né un consiglio medico",
+    "nome": "Dieta mediterranea",
+    "autore": "Appanzay",
     "data": "2026-11-25",
-    "note": "Piano inventato per mostrare la struttura del file. Ogni dieta va definita da un professionista."
+    "note": "Piano generico di circa 1700 kcal ispirato alla dieta mediterranea e alle linee guida italiane per una sana alimentazione. Non è un piano medico: per patologie o obiettivi specifici fatti seguire da un professionista."
   },
   "obiettivi": {
     "kcal": 1700,
@@ -605,6 +605,30 @@
               "alimento": "Yogurt intero",
               "grammi": 125
             }
+          ],
+          [
+            {
+              "alimento": "Latte senza lattosio",
+              "grammi": 200
+            }
+          ],
+          [
+            {
+              "alimento": "Yogurt senza lattosio",
+              "grammi": 125
+            }
+          ],
+          [
+            {
+              "alimento": "Bevanda di soia",
+              "grammi": 200
+            }
+          ],
+          [
+            {
+              "alimento": "Yogurt di soia",
+              "grammi": 125
+            }
           ]
         ]
       },
@@ -635,6 +659,24 @@
             {
               "alimento": "Biscotti secchi",
               "grammi": 30
+            }
+          ],
+          [
+            {
+              "alimento": "Fette biscottate senza glutine",
+              "grammi": 35
+            }
+          ],
+          [
+            {
+              "alimento": "Gallette di riso",
+              "grammi": 35
+            }
+          ],
+          [
+            {
+              "alimento": "Pane senza glutine",
+              "grammi": 50
             }
           ]
         ]
@@ -687,6 +729,36 @@
               "alimento": "Noci",
               "grammi": 20
             }
+          ],
+          [
+            {
+              "alimento": "Mandarini",
+              "grammi": 135
+            }
+          ],
+          [
+            {
+              "alimento": "Fragole",
+              "grammi": 210
+            }
+          ],
+          [
+            {
+              "alimento": "Melone giallo",
+              "grammi": 205
+            }
+          ],
+          [
+            {
+              "alimento": "Yogurt senza lattosio",
+              "grammi": 125
+            }
+          ],
+          [
+            {
+              "alimento": "Gallette di riso",
+              "grammi": 20
+            }
           ]
         ]
       }
@@ -729,6 +801,36 @@
             {
               "alimento": "Patate",
               "grammi": 350
+            }
+          ],
+          [
+            {
+              "alimento": "Pasta senza glutine",
+              "grammi": 100
+            }
+          ],
+          [
+            {
+              "alimento": "Pasta di mais",
+              "grammi": 100
+            }
+          ],
+          [
+            {
+              "alimento": "Quinoa",
+              "grammi": 95
+            }
+          ],
+          [
+            {
+              "alimento": "Grano saraceno",
+              "grammi": 105
+            }
+          ],
+          [
+            {
+              "alimento": "Pane senza glutine",
+              "grammi": 135
             }
           ]
         ]
@@ -776,6 +878,18 @@
             {
               "alimento": "Parmigiano / grana",
               "grammi": 10
+            }
+          ],
+          [
+            {
+              "alimento": "Tofu",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Pesce magro",
+              "grammi": 150
             }
           ]
         ]
@@ -884,6 +998,24 @@
               "unita": "kiwi",
               "grammi": 170
             }
+          ],
+          [
+            {
+              "alimento": "Mandarini",
+              "grammi": 135
+            }
+          ],
+          [
+            {
+              "alimento": "Fragole",
+              "grammi": 210
+            }
+          ],
+          [
+            {
+              "alimento": "Melone giallo",
+              "grammi": 205
+            }
           ]
         ]
       }
@@ -941,6 +1073,18 @@
               "alimento": "Manzo magro",
               "grammi": 100
             }
+          ],
+          [
+            {
+              "alimento": "Tofu",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Lenticchie lessate",
+              "grammi": 150
+            }
           ]
         ]
       },
@@ -963,6 +1107,24 @@
             {
               "alimento": "Patate",
               "grammi": 250
+            }
+          ],
+          [
+            {
+              "alimento": "Pane senza glutine",
+              "grammi": 85
+            }
+          ],
+          [
+            {
+              "alimento": "Gallette di riso",
+              "grammi": 60
+            }
+          ],
+          [
+            {
+              "alimento": "Riso",
+              "grammi": 60
             }
           ]
         ]

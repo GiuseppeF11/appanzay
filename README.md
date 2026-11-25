@@ -18,6 +18,14 @@ App per seguire la propria dieta giorno per giorno: menù, calorie, acqua, alime
 
 Le kcal sono valori medi indicativi per 100 g di parte edibile (margine di circa il 10 %). Appanzay non sostituisce chi ti segue.
 
+## Come si comincia
+
+Alla prima apertura si sceglie una di tre strade (e si può cambiare da *Account → Il mio piano*):
+
+- **Ho già un piano**: lo si trasforma con la propria AI e lo si carica (vedi sotto).
+- **Dieta mediterranea**: un piano generico da circa 1700 kcal pronto da usare.
+- **Piano su misura**: sesso, età, peso, altezza, attività, obiettivo e condizioni. L'app stima il fabbisogno (Mifflin-St Jeor), parte dalla dieta mediterranea, sostituisce gli alimenti non adatti con le alternative del piano e adegua le porzioni. È un punto di partenza generico, non un piano medico.
+
 ## Come si carica un piano
 
 L'app non contiene un'intelligenza artificiale. Chi vuole usarla:
