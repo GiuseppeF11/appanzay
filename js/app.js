@@ -593,7 +593,6 @@ function downloadText(txt, name, type) {
   try { const url = URL.createObjectURL(new Blob([txt], { type })); const l = document.createElement('a'); l.href = url; l.download = name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000); return true } catch (e) { return false }
 }
 const catalogText = () => '# Catalogo alimenti di Appanzay · ' + CATALOG.length + ' alimenti · ' + new Date().toLocaleDateString('it-IT') + '\n# nome|categoria|kcal per 100 g|porzioni|sinonimi|nota\n' + CATALOG.map(rowOf).join('\n') + '\n';
-const encMarkdown = () => '# Enciclopedia di Appanzay\n\nNomi da usare nel campo "alimento" del piano. Se un alimento non è qui, aggiungilo in "alimenti" con "kcal_100g".\n\n| Nome | Categoria | kcal/100 g | Sinonimi |\n|---|---|---|---|\n' + CATALOG.map(f => `| ${f.n} | ${f.c} | ${f.k} | ${f.alias.join(', ')} |`).join('\n') + '\n';
 function catalogCard() {
   if (!fbUser || !ADMIN.known) return '';
   const nMod = (CAT_EDIT.righe || []).length + (CAT_EDIT.rimossi || []).length;
@@ -1163,7 +1162,7 @@ function applyLib(libId, days, mode, slot) {
 }
 function closeDlg() { $('modal').hidden = true; dlg = null; unitsFor = null; $('dDel').textContent = 'Elimina' }
 $('dlg').addEventListener('submit', e => {
-  e.preventDefault(); if (!dlg || ['alt', 'libpick', 'apply', 'catimp'].includes(dlg.type)) return; const D = dlg;
+  e.preventDefault(); if (!dlg || ['alt', 'libpick', 'apply', 'catimp', 'prompt', 'logout'].includes(dlg.type)) return; const D = dlg;
   if (D.type === 'item') {
     const n = $('fN').value.trim(), kOver = $('fK').value; if (!n) return;
     let f = foodBy(n);
@@ -1272,21 +1271,27 @@ async function doUpdate() {
 }
 
 /* ---------- Piano: controllo del file, caricamento, primo accesso ---------- */
-const AI_PROMPT = `Ti allego la mia dieta e tre file di riferimento dell'app Appanzay:
-piano-esempio.json (esempio del formato), ISTRUZIONI.md (regole del formato)
-ed enciclopedia.md (nomi degli alimenti che l'app conosce).
+const AI_PROMPT = `Ti allego la mia dieta e un file di esempio (piano-esempio.json) dell'app Appanzay.
+Trasforma la mia dieta in un unico file JSON con la stessa struttura dell'esempio
+("formato": "appanzay-piano", "versione": 1).
 
-Trasforma la mia dieta in un unico file JSON nel formato "appanzay-piano", versione 1,
-seguendo ISTRUZIONI.md e la struttura di piano-esempio.json. Regole:
-- Usa per gli alimenti i nomi esatti di enciclopedia.md (o un sinonimo elencato).
-  Se un alimento non c'è, aggiungilo nell'elenco "alimenti" con "kcal_100g" e "categoria".
+Regole:
 - Riporta solo quello che c'è nella mia dieta: non inventare grammature, stati o frequenze.
-  Se un dato manca, omettilo e scrivilo nel campo "info.note".
-- "stato" vale solo "previsto", "sconsigliato" o "vietato"; spiega il perché in "motivo".
-- Il menù ha 7 giorni (da "lunedi" a "domenica") e per ogni giorno i pasti elencati in "pasti".
-- Le equivalenze elencano, per ogni tipo di pasto, le alternative con le loro grammature.
+  Se un dato manca, omettilo e scrivilo in "info.note".
+- "pasti": i pasti del giorno in ordine, con "id" senza spazi, "nome" e "tipo"
+  (colazione, spuntino, pranzo o cena).
+- "menu": 7 giorni scritti senza accenti (lunedi, martedi, mercoledi, giovedi, venerdi,
+  sabato, domenica); ogni giorno ha una voce per ogni "id" dei pasti, con l'elenco degli
+  alimenti. Ogni alimento ha "alimento" e "grammi" (solo il numero, parte edibile).
+- "alimenti": lo stato di ogni alimento citato dalla dieta. "stato" vale solo "previsto",
+  "sconsigliato" o "vietato"; il perché va in "motivo".
+- "equivalenze": per ogni tipo di pasto i componenti ("ruolo": amido, proteina, verdura,
+  frutta, condimento, latte, cereale, spuntino) con le alternative e le loro grammature.
+- "frequenze": quante volte a settimana ("regola": almeno, massimo o esatto).
+- Per gli alimenti usa i nomi dell'elenco in fondo. Se un alimento non c'è, aggiungilo in
+  "alimenti" con "kcal_100g" e "categoria".
 - Rispondi solo con il JSON, senza testo prima o dopo.`;
-const MODEL_FILES = [['modello/piano-esempio.json', 'Esempio', 'piano-esempio.json'], ['modello/ISTRUZIONI.md', 'Istruzioni', 'ISTRUZIONI.md'], [null, 'Alimenti', 'enciclopedia.md']]; // Alimenti: generato dal catalogo comune aggiornato
+const aiPrompt = () => AI_PROMPT + '\n\nNomi degli alimenti che l\'app conosce:\n' + CATALOG.map(f => f.n).join('; ');
 const TIPI = ['colazione', 'spuntino', 'pranzo', 'cena'], RUOLI = ['amido', 'proteina', 'verdura', 'frutta', 'condimento', 'latte', 'cereale', 'spuntino', 'altro'];
 // Controlla un piano: errori (bloccano il caricamento) e avvisi
 function validatePlan(text) {
@@ -1396,9 +1401,13 @@ function checkHTML(res, where) {
    ${hasPlan ? `<label class="chkline"><input type="checkbox" id="planMenu"> Sostituisci anche il mio menù settimanale con quello del piano</label>` : ''}
    <button class="btn pri wide" type="button" data-act="planapply" data-where="${where}">Usa questo piano</button></div>`;
 }
+function checkPlanText(text, where) {
+  const res = validatePlan(String(text)); pendingPlan = res.raw;
+  const box = $(where === 'onboard' ? 'obCheck' : 'planCheck'); if (box) { box.innerHTML = checkHTML(res, where); box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) }
+}
 function readPlanFile(file, where) {
   const r = new FileReader();
-  r.onload = () => { const res = validatePlan(String(r.result)); pendingPlan = res.raw; const box = $(where === 'onboard' ? 'obCheck' : 'planCheck'); if (box) box.innerHTML = checkHTML(res, where) };
+  r.onload = () => checkPlanText(r.result, where);
   r.readAsText(file);
 }
 function applyPlan(raw, replaceMenu) {
@@ -1412,28 +1421,32 @@ function applyPlan(raw, replaceMenu) {
 async function loadExample() {
   try { const r = await fetch('modello/piano-esempio.json', { cache: 'no-cache' }); if (!r.ok) throw 0; return await r.json() } catch (e) { return null }
 }
-function modelLinks() {
-  return `<div class="modlinks">${MODEL_FILES.map(([href, label, dl]) => `<${href ? `a class="btn" href="${href}" download="${dl}" target="_blank" rel="noopener"` : 'button class="btn" type="button" data-act="dlenc"'}><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${label}</span></${href ? 'a' : 'button'}>`).join('')}
-   <button class="btn" type="button" data-act="copyprompt">Copia il testo per l'AI</button></div>`;
+function planSteps(where) {
+  const on = where === 'onboard';
+  return `<ol class="steps">
+    <li><strong>Scarica l'esempio.</strong> Mostra alla tua AI come deve essere il file.
+     <a class="btn wide" href="modello/piano-esempio.json" download="piano-esempio.json" target="_blank" rel="noopener">Scarica l'esempio</a></li>
+    <li><strong>Copia il prompt.</strong>
+     <button class="btn wide" type="button" data-act="copyprompt">Copia il prompt</button>
+     <details class="moddet"><summary>Leggi il prompt</summary><pre class="prompt">${esc(AI_PROMPT)}\n\n(segue l'elenco degli alimenti dell'app)</pre></details></li>
+    <li><strong>Chiedi alla tua AI.</strong> Apri ChatGPT, Claude, Gemini o un'altra AI, allega la tua dieta (PDF o foto) e l'esempio, poi incolla il prompt.</li>
+    <li><strong>Carica la risposta.</strong> Salvala come file <code>.json</code> oppure copiala e incollala qui. L'app controlla tutto e ti dice cosa correggere.
+     <div class="row2"><label class="btn ${on ? 'pri' : ''} filebtn">Carica file<input type="file" id="${on ? 'obFile' : 'planFile'}" accept="application/json,.json,.txt" hidden></label><button class="btn" type="button" data-act="planpaste" data-w="${where}">Incolla testo</button></div>
+     <div class="pastebox" id="${on ? 'obPaste' : 'planPaste'}" hidden><textarea rows="6" spellcheck="false" autocapitalize="off" placeholder="Incolla qui la risposta dell'AI"></textarea><button class="btn pri" type="button" data-act="plancheck" data-w="${where}">Controlla</button></div></li>
+   </ol>`;
 }
 function renderOnboard() {
-  $('obBody').innerHTML = `
-   <ol class="steps">
-    <li><strong>Scarica il modello.</strong> Un piano di esempio, le istruzioni del formato e l'elenco degli alimenti che l'app conosce.${modelLinks()}</li>
-    <li><strong>Prepara il tuo file con la tua AI.</strong> Allega la tua dieta (PDF o foto) e i tre file, poi incolla il testo copiato. Salva la risposta come file <code>.json</code>.</li>
-    <li><strong>Caricalo qui.</strong> L'app controlla il file e ti dice cosa correggere.
-     <label class="btn pri wide filebtn">Carica il tuo piano<input type="file" id="obFile" accept="application/json,.json,.txt" hidden></label></li>
-   </ol>
+  $('obBody').innerHTML = `${planSteps('onboard')}
    <div id="obCheck"></div>
    <div class="obalt"><button class="btn ghost wide" type="button" data-act="planexample">Prova con il piano di esempio</button>
    ${fbUser ? `<button class="linkbtn" type="button" data-act="logout">Esci da ${esc(fbUser.email || 'questo account')}</button>` : ''}</div>`;
 }
 function planCard() {
-  if (!PL) return `<div class="card"><h3>Il mio piano</h3><p>Non hai ancora caricato un piano.</p><label class="btn pri filebtn">Carica il tuo piano<input type="file" id="planFile" accept="application/json,.json,.txt" hidden></label><div id="planCheck"></div></div>`;
+  if (!PL) return `<div class="card"><h3>Il mio piano</h3><p>Non hai ancora caricato un piano.</p>${planSteps('account')}<div id="planCheck"></div></div>`;
   return `<div class="card"><h3>Il mio piano</h3>${planSummary(S.plan)}${PL.info.data ? `<p class="small muted">Data del piano: ${esc(PL.info.data)}</p>` : ''}${PL.info.note ? `<p class="small muted">${esc(PL.info.note)}</p>` : ''}
-   <div class="row2"><label class="btn filebtn">Carica un nuovo piano<input type="file" id="planFile" accept="application/json,.json,.txt" hidden></label><button class="btn" type="button" data-act="planexport">Scarica il mio piano</button></div>
-   <div id="planCheck"></div>
-   <details class="moddet"><summary>Modello e istruzioni per prepararne uno</summary>${modelLinks()}</details></div>`;
+   <div class="row2"><button class="btn" type="button" data-act="planexport">Scarica il mio piano</button></div>
+   <details class="moddet"><summary>Carica un nuovo piano</summary>${planSteps('account')}</details>
+   <div id="planCheck"></div></div>`;
 }
 function afterData() {
   if (!PL) setGate('noplan');
@@ -1651,7 +1664,13 @@ document.addEventListener('click', async e => {
     try { const url = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); const l = document.createElement('a'); l.href = url; l.download = 'il-mio-piano.json'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000) }
     catch (err) { try { await navigator.clipboard.writeText(txt); toast('Piano copiato negli appunti', false) } catch (e2) { toast('Download non disponibile qui', false) } }
   }
-  else if (a === 'copyprompt') { try { await navigator.clipboard.writeText(AI_PROMPT); toast('Testo copiato: incollalo nella tua AI con i file del modello', false) } catch (err) { toast('Copia non riuscita in questa vista', false) } }
+  else if (a === 'copyprompt') {
+    const txt = aiPrompt();
+    try { await navigator.clipboard.writeText(txt); toast('Prompt copiato: incollalo nella tua AI insieme alla dieta e all\'esempio', false) }
+    catch (err) { dlg = { type: 'prompt' }; showDlg(`<h2>Copia il prompt</h2><p class="small muted">La copia automatica non funziona qui: tieni premuto il testo, seleziona tutto e copia.</p><textarea id="promptTxt" rows="10" readonly>${esc(txt)}</textarea><div class="acts"><span class="sp"></span><button class="btn" type="button" data-act="closedlg">Chiudi</button></div>`, { noActs: true }); $('promptTxt').select() }
+  }
+  else if (a === 'planpaste') { const box = $(b.dataset.w === 'onboard' ? 'obPaste' : 'planPaste'); if (box) { box.hidden = !box.hidden; if (!box.hidden) box.querySelector('textarea').focus() } }
+  else if (a === 'plancheck') { const box = $(b.dataset.w === 'onboard' ? 'obPaste' : 'planPaste'), t = box && box.querySelector('textarea').value.trim(); if (!t) { toast('Incolla prima il testo dell\'AI', false); return } checkPlanText(t, b.dataset.w) }
   else if (a === 'closedlg') closeDlg();
   else if (a === 'catedit') openCatEdit(b.dataset.n);
   else if (a === 'catnew') openCatEdit(null);
@@ -1668,7 +1687,6 @@ document.addEventListener('click', async e => {
   else if (a === 'catimpgo') { if (!dlg || !dlg.rows.length) return; const rows = dlg.rows; b.disabled = true; const st = rows.reduce((acc, f) => catUpsert(acc, f, null), CAT_EDIT); if (await publishCatalog(st, rows.length + (rows.length === 1 ? ' alimento importato' : ' alimenti importati'))) closeDlg(); else b.disabled = false }
   else if (a === 'catrestore') { if (!dlg || !dlg.old) return; const n = dlg.old; if (await publishCatalog(catRestore(CAT_EDIT, n), n + ' riportato ai valori originali')) closeDlg() }
   else if (a === 'catexport') { if (!downloadText(catalogText(), 'catalogo-alimenti.txt', 'text/plain')) toast('Download non disponibile qui', false) }
-  else if (a === 'dlenc') { if (!downloadText(encMarkdown(), 'enciclopedia.md', 'text/markdown')) toast('Download non disponibile qui', false) }
   else if (a === 'catadmin') {
     if (!FB || !fbUser) return; b.disabled = true;
     try { await FB.setShared('amministratori', { uids: [fbUser.uid] }); Object.assign(ADMIN, { exists: true, me: true }); toast('Ora sei l\'amministratore del catalogo', false) }
