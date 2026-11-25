@@ -1,0 +1,1241 @@
+{
+  "formato": "appanzay-piano",
+  "versione": 1,
+  "info": {
+    "nome": "Esempio – dieta mediterranea 1700 kcal",
+    "autore": "Esempio di formato: non è un piano reale né un consiglio medico",
+    "data": "2026-11-25",
+    "note": "Piano inventato per mostrare la struttura del file. Ogni dieta va definita da un professionista."
+  },
+  "obiettivi": {
+    "kcal": 1700,
+    "acqua_litri": 2,
+    "bicchiere_ml": 200
+  },
+  "pasti": [
+    {
+      "id": "colazione",
+      "nome": "Colazione",
+      "tipo": "colazione"
+    },
+    {
+      "id": "spuntino_mattina",
+      "nome": "Spuntino mattina",
+      "tipo": "spuntino"
+    },
+    {
+      "id": "pranzo",
+      "nome": "Pranzo",
+      "tipo": "pranzo"
+    },
+    {
+      "id": "spuntino_pomeriggio",
+      "nome": "Spuntino pomeriggio",
+      "tipo": "spuntino"
+    },
+    {
+      "id": "cena",
+      "nome": "Cena",
+      "tipo": "cena"
+    }
+  ],
+  "menu": {
+    "lunedi": {
+      "colazione": [
+        {
+          "alimento": "Latte vaccino",
+          "grammi": 200
+        },
+        {
+          "alimento": "Fette biscottate",
+          "quantita": 5,
+          "unita": "fetta",
+          "grammi": 35
+        },
+        {
+          "alimento": "Marmellata",
+          "grammi": 10
+        }
+      ],
+      "spuntino_mattina": [
+        {
+          "alimento": "Mela",
+          "grammi": 150
+        }
+      ],
+      "pranzo": {
+        "formato": "primo",
+        "alimenti": [
+          {
+            "alimento": "Pasta di grano",
+            "grammi": 100
+          },
+          {
+            "alimento": "Sugo di pomodoro",
+            "grammi": 80
+          },
+          {
+            "alimento": "Parmigiano / grana",
+            "grammi": 10
+          },
+          {
+            "alimento": "Zucchine",
+            "grammi": 200
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          },
+          {
+            "alimento": "Mela",
+            "grammi": 150
+          }
+        ]
+      },
+      "spuntino_pomeriggio": [
+        {
+          "alimento": "Yogurt intero",
+          "grammi": 125
+        }
+      ],
+      "cena": {
+        "formato": "secondo",
+        "alimenti": [
+          {
+            "alimento": "Pesce magro",
+            "grammi": 150
+          },
+          {
+            "alimento": "Patate",
+            "grammi": 250
+          },
+          {
+            "alimento": "Lattuga / insalata",
+            "grammi": 80
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          }
+        ]
+      }
+    },
+    "martedi": {
+      "colazione": [
+        {
+          "alimento": "Yogurt intero",
+          "grammi": 125
+        },
+        {
+          "alimento": "Fiocchi d'avena",
+          "grammi": 30
+        },
+        {
+          "alimento": "Miele",
+          "grammi": 10
+        }
+      ],
+      "spuntino_mattina": [
+        {
+          "alimento": "Arance",
+          "grammi": 150
+        }
+      ],
+      "pranzo": {
+        "formato": "primo",
+        "alimenti": [
+          {
+            "alimento": "Pasta di grano",
+            "grammi": 70
+          },
+          {
+            "alimento": "Ceci lessati",
+            "grammi": 150
+          },
+          {
+            "alimento": "Carote",
+            "grammi": 150
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          },
+          {
+            "alimento": "Arance",
+            "grammi": 150
+          }
+        ]
+      },
+      "spuntino_pomeriggio": [
+        {
+          "alimento": "Noci",
+          "grammi": 20
+        }
+      ],
+      "cena": {
+        "formato": "secondo",
+        "alimenti": [
+          {
+            "alimento": "Pollo",
+            "grammi": 120
+          },
+          {
+            "alimento": "Broccoli",
+            "grammi": 200
+          },
+          {
+            "alimento": "Pane",
+            "grammi": 80
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          }
+        ]
+      }
+    },
+    "mercoledi": {
+      "colazione": [
+        {
+          "alimento": "Latte vaccino",
+          "grammi": 200
+        },
+        {
+          "alimento": "Fette biscottate",
+          "quantita": 5,
+          "unita": "fetta",
+          "grammi": 35
+        },
+        {
+          "alimento": "Marmellata",
+          "grammi": 10
+        }
+      ],
+      "spuntino_mattina": [
+        {
+          "alimento": "Banane",
+          "grammi": 120
+        }
+      ],
+      "pranzo": {
+        "formato": "primo",
+        "alimenti": [
+          {
+            "alimento": "Riso",
+            "grammi": 100
+          },
+          {
+            "alimento": "Zucchine",
+            "grammi": 150
+          },
+          {
+            "alimento": "Parmigiano / grana",
+            "grammi": 10
+          },
+          {
+            "alimento": "Pomodori",
+            "grammi": 150
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          },
+          {
+            "alimento": "Pere",
+            "grammi": 150
+          }
+        ]
+      },
+      "spuntino_pomeriggio": [
+        {
+          "alimento": "Mela",
+          "grammi": 150
+        }
+      ],
+      "cena": {
+        "formato": "secondo",
+        "alimenti": [
+          {
+            "alimento": "Salmone",
+            "grammi": 120
+          },
+          {
+            "alimento": "Spinaci",
+            "grammi": 200
+          },
+          {
+            "alimento": "Pane",
+            "grammi": 80
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          }
+        ]
+      }
+    },
+    "giovedi": {
+      "colazione": [
+        {
+          "alimento": "Yogurt intero",
+          "grammi": 125
+        },
+        {
+          "alimento": "Fiocchi d'avena",
+          "grammi": 30
+        },
+        {
+          "alimento": "Miele",
+          "grammi": 10
+        }
+      ],
+      "spuntino_mattina": [
+        {
+          "alimento": "Pere",
+          "grammi": 150
+        }
+      ],
+      "pranzo": {
+        "formato": "primo",
+        "alimenti": [
+          {
+            "alimento": "Farro",
+            "grammi": 100
+          },
+          {
+            "alimento": "Lenticchie lessate",
+            "grammi": 150
+          },
+          {
+            "alimento": "Lattuga / insalata",
+            "grammi": 80
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          },
+          {
+            "alimento": "Kiwi",
+            "quantita": 2,
+            "unita": "kiwi",
+            "grammi": 170
+          }
+        ]
+      },
+      "spuntino_pomeriggio": [
+        {
+          "alimento": "Yogurt intero",
+          "grammi": 125
+        }
+      ],
+      "cena": {
+        "formato": "secondo",
+        "alimenti": [
+          {
+            "alimento": "Uovo",
+            "quantita": 2,
+            "unita": "uovo",
+            "grammi": 110
+          },
+          {
+            "alimento": "Zucchine",
+            "grammi": 200
+          },
+          {
+            "alimento": "Pane",
+            "grammi": 80
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          }
+        ]
+      }
+    },
+    "venerdi": {
+      "colazione": [
+        {
+          "alimento": "Latte vaccino",
+          "grammi": 200
+        },
+        {
+          "alimento": "Fette biscottate",
+          "quantita": 5,
+          "unita": "fetta",
+          "grammi": 35
+        },
+        {
+          "alimento": "Marmellata",
+          "grammi": 10
+        }
+      ],
+      "spuntino_mattina": [
+        {
+          "alimento": "Kiwi",
+          "quantita": 2,
+          "unita": "kiwi",
+          "grammi": 170
+        }
+      ],
+      "pranzo": {
+        "formato": "primo",
+        "alimenti": [
+          {
+            "alimento": "Pasta di grano",
+            "grammi": 100
+          },
+          {
+            "alimento": "Tonno in salamoia",
+            "grammi": 80
+          },
+          {
+            "alimento": "Pomodori",
+            "grammi": 100
+          },
+          {
+            "alimento": "Finocchi",
+            "grammi": 150
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          },
+          {
+            "alimento": "Mela",
+            "grammi": 150
+          }
+        ]
+      },
+      "spuntino_pomeriggio": [
+        {
+          "alimento": "Noci",
+          "grammi": 20
+        }
+      ],
+      "cena": {
+        "formato": "secondo",
+        "alimenti": [
+          {
+            "alimento": "Pesce magro",
+            "grammi": 150
+          },
+          {
+            "alimento": "Melanzane",
+            "grammi": 200
+          },
+          {
+            "alimento": "Pane",
+            "grammi": 80
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          }
+        ]
+      }
+    },
+    "sabato": {
+      "colazione": [
+        {
+          "alimento": "Yogurt intero",
+          "grammi": 125
+        },
+        {
+          "alimento": "Fiocchi d'avena",
+          "grammi": 30
+        },
+        {
+          "alimento": "Miele",
+          "grammi": 10
+        }
+      ],
+      "spuntino_mattina": [
+        {
+          "alimento": "Mela",
+          "grammi": 150
+        }
+      ],
+      "pranzo": {
+        "formato": "primo",
+        "alimenti": [
+          {
+            "alimento": "Riso",
+            "grammi": 70
+          },
+          {
+            "alimento": "Fagioli lessati",
+            "grammi": 150
+          },
+          {
+            "alimento": "Carote",
+            "grammi": 150
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          },
+          {
+            "alimento": "Arance",
+            "grammi": 150
+          }
+        ]
+      },
+      "spuntino_pomeriggio": [
+        {
+          "alimento": "Yogurt intero",
+          "grammi": 125
+        }
+      ],
+      "cena": {
+        "formato": "secondo",
+        "alimenti": [
+          {
+            "alimento": "Mozzarella",
+            "grammi": 100
+          },
+          {
+            "alimento": "Pomodori",
+            "grammi": 200
+          },
+          {
+            "alimento": "Pane",
+            "grammi": 80
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          }
+        ]
+      }
+    },
+    "domenica": {
+      "colazione": [
+        {
+          "alimento": "Latte vaccino",
+          "grammi": 200
+        },
+        {
+          "alimento": "Fette biscottate",
+          "quantita": 5,
+          "unita": "fetta",
+          "grammi": 35
+        },
+        {
+          "alimento": "Marmellata",
+          "grammi": 10
+        }
+      ],
+      "spuntino_mattina": [
+        {
+          "alimento": "Arance",
+          "grammi": 150
+        }
+      ],
+      "pranzo": {
+        "formato": "primo",
+        "alimenti": [
+          {
+            "alimento": "Pasta di grano",
+            "grammi": 100
+          },
+          {
+            "alimento": "Ragù di carne",
+            "grammi": 80
+          },
+          {
+            "alimento": "Parmigiano / grana",
+            "grammi": 10
+          },
+          {
+            "alimento": "Lattuga / insalata",
+            "grammi": 100
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          },
+          {
+            "alimento": "Pere",
+            "grammi": 150
+          }
+        ]
+      },
+      "spuntino_pomeriggio": [
+        {
+          "alimento": "Mela",
+          "grammi": 150
+        }
+      ],
+      "cena": {
+        "formato": "secondo",
+        "alimenti": [
+          {
+            "alimento": "Tacchino",
+            "grammi": 120
+          },
+          {
+            "alimento": "Peperoni",
+            "grammi": 200
+          },
+          {
+            "alimento": "Patate",
+            "grammi": 250
+          },
+          {
+            "alimento": "Olio extravergine d'oliva",
+            "grammi": 15
+          }
+        ]
+      }
+    }
+  },
+  "equivalenze": {
+    "colazione": [
+      {
+        "ruolo": "latte",
+        "opzioni": [
+          [
+            {
+              "alimento": "Latte vaccino",
+              "grammi": 200
+            }
+          ],
+          [
+            {
+              "alimento": "Yogurt intero",
+              "grammi": 125
+            }
+          ]
+        ]
+      },
+      {
+        "ruolo": "cereale",
+        "opzioni": [
+          [
+            {
+              "alimento": "Fette biscottate",
+              "quantita": 5,
+              "unita": "fetta",
+              "grammi": 35
+            }
+          ],
+          [
+            {
+              "alimento": "Pane",
+              "grammi": 40
+            }
+          ],
+          [
+            {
+              "alimento": "Fiocchi d'avena",
+              "grammi": 30
+            }
+          ],
+          [
+            {
+              "alimento": "Biscotti secchi",
+              "grammi": 30
+            }
+          ]
+        ]
+      }
+    ],
+    "spuntino": [
+      {
+        "ruolo": "spuntino",
+        "opzioni": [
+          [
+            {
+              "alimento": "Mela",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Pere",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Arance",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Kiwi",
+              "quantita": 2,
+              "unita": "kiwi",
+              "grammi": 170
+            }
+          ],
+          [
+            {
+              "alimento": "Banane",
+              "grammi": 120
+            }
+          ],
+          [
+            {
+              "alimento": "Yogurt intero",
+              "grammi": 125
+            }
+          ],
+          [
+            {
+              "alimento": "Noci",
+              "grammi": 20
+            }
+          ]
+        ]
+      }
+    ],
+    "pranzo": [
+      {
+        "ruolo": "amido",
+        "opzioni": [
+          [
+            {
+              "alimento": "Pasta di grano",
+              "grammi": 100
+            }
+          ],
+          [
+            {
+              "alimento": "Riso",
+              "grammi": 100
+            }
+          ],
+          [
+            {
+              "alimento": "Farro",
+              "grammi": 100
+            }
+          ],
+          [
+            {
+              "alimento": "Pasta integrale",
+              "grammi": 100
+            }
+          ],
+          [
+            {
+              "alimento": "Pane",
+              "grammi": 100
+            }
+          ],
+          [
+            {
+              "alimento": "Patate",
+              "grammi": 350
+            }
+          ]
+        ]
+      },
+      {
+        "ruolo": "proteina",
+        "opzioni": [
+          [
+            {
+              "alimento": "Ceci lessati",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Lenticchie lessate",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Fagioli lessati",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Tonno in salamoia",
+              "grammi": 80
+            }
+          ],
+          [
+            {
+              "alimento": "Pollo",
+              "grammi": 100
+            }
+          ],
+          [
+            {
+              "alimento": "Uovo",
+              "quantita": 1,
+              "unita": "uovo",
+              "grammi": 55
+            },
+            {
+              "alimento": "Parmigiano / grana",
+              "grammi": 10
+            }
+          ]
+        ]
+      },
+      {
+        "ruolo": "verdura",
+        "opzioni": [
+          [
+            {
+              "alimento": "Zucchine",
+              "grammi": 200
+            }
+          ],
+          [
+            {
+              "alimento": "Lattuga / insalata",
+              "grammi": 80
+            }
+          ],
+          [
+            {
+              "alimento": "Pomodori",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Carote",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Finocchi",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Broccoli",
+              "grammi": 200
+            }
+          ],
+          [
+            {
+              "alimento": "Spinaci",
+              "grammi": 200
+            }
+          ],
+          [
+            {
+              "alimento": "Melanzane",
+              "grammi": 200
+            }
+          ],
+          [
+            {
+              "alimento": "Peperoni",
+              "grammi": 200
+            }
+          ]
+        ]
+      },
+      {
+        "ruolo": "condimento",
+        "opzioni": [
+          [
+            {
+              "alimento": "Olio extravergine d'oliva",
+              "grammi": 15
+            }
+          ]
+        ]
+      },
+      {
+        "ruolo": "frutta",
+        "opzioni": [
+          [
+            {
+              "alimento": "Mela",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Pere",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Arance",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Banane",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Kiwi",
+              "quantita": 2,
+              "unita": "kiwi",
+              "grammi": 170
+            }
+          ]
+        ]
+      }
+    ],
+    "cena": [
+      {
+        "ruolo": "proteina",
+        "opzioni": [
+          [
+            {
+              "alimento": "Pesce magro",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Salmone",
+              "grammi": 120
+            }
+          ],
+          [
+            {
+              "alimento": "Pollo",
+              "grammi": 120
+            }
+          ],
+          [
+            {
+              "alimento": "Tacchino",
+              "grammi": 120
+            }
+          ],
+          [
+            {
+              "alimento": "Uovo",
+              "quantita": 2,
+              "unita": "uovo",
+              "grammi": 110
+            }
+          ],
+          [
+            {
+              "alimento": "Mozzarella",
+              "grammi": 100
+            }
+          ],
+          [
+            {
+              "alimento": "Ricotta",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Manzo magro",
+              "grammi": 100
+            }
+          ]
+        ]
+      },
+      {
+        "ruolo": "amido",
+        "opzioni": [
+          [
+            {
+              "alimento": "Pane",
+              "grammi": 80
+            }
+          ],
+          [
+            {
+              "alimento": "Pane integrale",
+              "grammi": 80
+            }
+          ],
+          [
+            {
+              "alimento": "Patate",
+              "grammi": 250
+            }
+          ]
+        ]
+      },
+      {
+        "ruolo": "verdura",
+        "opzioni": [
+          [
+            {
+              "alimento": "Zucchine",
+              "grammi": 200
+            }
+          ],
+          [
+            {
+              "alimento": "Lattuga / insalata",
+              "grammi": 80
+            }
+          ],
+          [
+            {
+              "alimento": "Pomodori",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Carote",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Finocchi",
+              "grammi": 150
+            }
+          ],
+          [
+            {
+              "alimento": "Broccoli",
+              "grammi": 200
+            }
+          ],
+          [
+            {
+              "alimento": "Spinaci",
+              "grammi": 200
+            }
+          ],
+          [
+            {
+              "alimento": "Melanzane",
+              "grammi": 200
+            }
+          ],
+          [
+            {
+              "alimento": "Peperoni",
+              "grammi": 200
+            }
+          ]
+        ]
+      },
+      {
+        "ruolo": "condimento",
+        "opzioni": [
+          [
+            {
+              "alimento": "Olio extravergine d'oliva",
+              "grammi": 15
+            }
+          ]
+        ]
+      }
+    ]
+  },
+  "frequenze": [
+    {
+      "nome": "Pesce",
+      "alimenti": [
+        "Pesce magro",
+        "Salmone",
+        "Tonno in salamoia"
+      ],
+      "volte": 3,
+      "regola": "almeno"
+    },
+    {
+      "nome": "Legumi",
+      "alimenti": [
+        "Ceci lessati",
+        "Lenticchie lessate",
+        "Fagioli lessati"
+      ],
+      "volte": 3,
+      "regola": "almeno"
+    },
+    {
+      "nome": "Carne rossa",
+      "alimenti": [
+        "Manzo magro",
+        "Ragù di carne"
+      ],
+      "volte": 1,
+      "regola": "massimo"
+    },
+    {
+      "nome": "Uova",
+      "alimenti": [
+        "Uovo"
+      ],
+      "volte": 4,
+      "regola": "massimo"
+    },
+    {
+      "nome": "Formaggi (porzione intera)",
+      "alimenti": [
+        "Mozzarella",
+        "Ricotta",
+        "Parmigiano / grana"
+      ],
+      "volte": 3,
+      "regola": "massimo",
+      "grammi_minimi": 40
+    },
+    {
+      "nome": "Salumi",
+      "alimenti": [
+        "Prosciutto crudo",
+        "Prosciutto cotto",
+        "Bresaola",
+        "Salame",
+        "Mortadella"
+      ],
+      "volte": 1,
+      "regola": "massimo"
+    }
+  ],
+  "regole": {
+    "pasto_libero": "1 volta a settimana, al posto di una cena.",
+    "diario_sintomi": false,
+    "note": [
+      "Almeno 2 L di acqua al giorno.",
+      "Sale: meno di 5 g al giorno, insaporisci con erbe e spezie."
+    ]
+  },
+  "alimenti": [
+    {
+      "nome": "Pane integrale",
+      "stato": "previsto",
+      "motivo": "Cereali integrali",
+      "porzione": "80 g a cena"
+    },
+    {
+      "nome": "Pasta integrale",
+      "stato": "previsto",
+      "motivo": "Cereali integrali",
+      "porzione": "100 g a pranzo"
+    },
+    {
+      "nome": "Ceci lessati",
+      "stato": "previsto",
+      "motivo": "Legumi almeno 3 volte a settimana",
+      "porzione": "150 g"
+    },
+    {
+      "nome": "Lenticchie lessate",
+      "stato": "previsto",
+      "motivo": "Legumi almeno 3 volte a settimana",
+      "porzione": "150 g"
+    },
+    {
+      "nome": "Pesce magro",
+      "stato": "previsto",
+      "motivo": "Pesce almeno 3 volte a settimana",
+      "porzione": "150 g"
+    },
+    {
+      "nome": "Salmone",
+      "stato": "previsto",
+      "motivo": "Pesce grasso, ricco di omega 3",
+      "porzione": "120 g"
+    },
+    {
+      "nome": "Olio extravergine d'oliva",
+      "stato": "previsto",
+      "motivo": "Condimento principale",
+      "porzione": "15 g a pasto"
+    },
+    {
+      "nome": "Acqua oligominerale",
+      "stato": "previsto",
+      "motivo": "Almeno 2 L al giorno"
+    },
+    {
+      "nome": "Manzo magro",
+      "stato": "previsto",
+      "motivo": "Carne rossa al massimo 1 volta a settimana",
+      "porzione": "100 g"
+    },
+    {
+      "nome": "Burro",
+      "stato": "sconsigliato",
+      "motivo": "Preferire l'olio extravergine"
+    },
+    {
+      "nome": "Zucchero",
+      "stato": "sconsigliato",
+      "motivo": "Ridurre gli zuccheri aggiunti"
+    },
+    {
+      "nome": "Dolci e merendine",
+      "stato": "sconsigliato",
+      "motivo": "Solo occasionalmente"
+    },
+    {
+      "nome": "Bibite gassate / cola",
+      "stato": "sconsigliato",
+      "motivo": "Zuccheri aggiunti"
+    },
+    {
+      "nome": "Succhi di frutta",
+      "stato": "sconsigliato",
+      "motivo": "Meglio la frutta intera"
+    },
+    {
+      "nome": "Salame",
+      "stato": "sconsigliato",
+      "motivo": "Insaccati: al massimo 1 volta a settimana"
+    },
+    {
+      "nome": "Wurstel",
+      "stato": "sconsigliato",
+      "motivo": "Insaccato grasso e salato"
+    },
+    {
+      "nome": "Patatine in busta",
+      "stato": "sconsigliato",
+      "motivo": "Fritte e salate"
+    },
+    {
+      "nome": "Patatine fritte",
+      "stato": "sconsigliato",
+      "motivo": "Fritti: solo occasionalmente"
+    },
+    {
+      "nome": "Sale",
+      "stato": "sconsigliato",
+      "motivo": "Meno di 5 g al giorno"
+    },
+    {
+      "nome": "Vino",
+      "stato": "sconsigliato",
+      "motivo": "Al massimo un bicchiere, ai pasti"
+    },
+    {
+      "nome": "Superalcolici",
+      "stato": "vietato",
+      "motivo": "Esclusi dal piano"
+    },
+    {
+      "nome": "Tisana zenzero e limone",
+      "stato": "previsto",
+      "motivo": "Esempio di alimento che non è nell'enciclopedia",
+      "kcal_100g": 2,
+      "categoria": "Bevande",
+      "unita": [
+        {
+          "nome": "tazza",
+          "plurale": "tazze",
+          "grammi": 200
+        }
+      ]
+    }
+  ]
+}

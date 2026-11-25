@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Appanzay</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#25492f"/><stop offset="1" stop-color="#162d20"/></linearGradient>
+    <radialGradient id="fr" cx="0.36" cy="0.34" r="0.8"><stop offset="0" stop-color="#ffbe6e"/><stop offset="0.55" stop-color="#f28a2c"/><stop offset="1" stop-color="#d25e18"/></radialGradient>
+    <linearGradient id="lf" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#5fae3c"/><stop offset="1" stop-color="#a6e07a"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="0" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="152" fill="none" stroke="#33603f" stroke-width="36"/>
+  <path d="M256 104 A152 152 0 1 1 104 256" fill="none" stroke="#5db3f7" stroke-width="36" stroke-linecap="round"/>
+  <circle cx="256" cy="264" r="88" fill="url(#fr)"/>
+  <ellipse cx="224" cy="236" rx="24" ry="14" fill="#fff" fill-opacity=".3" transform="rotate(-32 224 236)"/>
+  <circle cx="300" cy="310" r="3" fill="#b8541a" fill-opacity=".35"/><circle cx="286" cy="322" r="2.5" fill="#b8541a" fill-opacity=".3"/><circle cx="310" cy="292" r="2.5" fill="#b8541a" fill-opacity=".3"/>
+  <path d="M256 180 q3 -10 9 -16" fill="none" stroke="#3d6b2a" stroke-width="7" stroke-linecap="round"/>
+  <path d="M262 170 C268 148 292 138 314 142 C307 164 286 176 262 170 Z" fill="url(#lf)"/>
+  <path d="M268 166 C280 158 294 151 308 146" fill="none" stroke="#3f7a2a" stroke-width="3" stroke-linecap="round" stroke-opacity=".6"/>
+</svg>
