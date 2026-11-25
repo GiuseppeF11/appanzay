@@ -1,7 +1,7 @@
 // Cache per usare l'app anche offline (solo versione GitHub Pages).
 // Il nome della cache viene aggiornato da scripts/bump_version.py a ogni rilascio.
-const CACHE = 'appanzay-1.19.1';
-const FILES = ['./', './index.html', './css/app.css', './js/version.js', './js/config.js', './js/foods.js', './js/app.js', './js/firebase.js', './manifest.webmanifest', './modello/piano-esempio.json', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/icon.svg', './icons/favicon.svg', './icons/favicon-32.png', './icons/apple-touch-icon.png'];
+const CACHE = 'appanzay-1.20.0';
+const FILES = ['./', './index.html', './css/app.css', './js/version.js', './js/config.js', './js/foods.js', './js/patologie.js', './js/app.js', './js/firebase.js', './manifest.webmanifest', './modello/piano-esempio.json', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/icon.svg', './icons/favicon.svg', './icons/favicon-32.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' }))))); self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));

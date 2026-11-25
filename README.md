@@ -13,6 +13,7 @@ App per seguire la propria dieta giorno per giorno: menù, calorie, acqua, alime
 - **Spesa**: lista calcolata dal menù per periodo, divisa per reparto, con quantità in pezzi, spunte, extra consigliati e copia del testo.
 - **Alimenti**: catalogo comune di alimenti (kcal medie, porzioni, sinonimi), uguale per tutti, con lo stato dato dal piano di ognuno; ricerca dei prodotti confezionati su [Open Food Facts](https://world.openfoodfacts.org) (ODbL). Ogni utente può aggiungere alimenti suoi, visibili solo nel suo account.
 - **Catalogo comune**: l'amministratore aggiunge, modifica, elimina o importa alimenti dall'app e le modifiche arrivano a tutti gli utenti al successivo avvio.
+- **Salute e preferenze**: ogni utente sceglie le sue condizioni (27 tra celiachia, lattosio, i singoli allergeni, colon irritabile, reflusso, calcoli, gotta, diabete, colesterolo, pressione, gravidanza, warfarin…) e può segnare a mano qualsiasi alimento come vietato, sconsigliato o previsto. Vince la scelta manuale, poi lo stato più restrittivo tra piano e condizioni. Le liste per condizione sono in `js/patologie.js` e l'amministratore le può modificare dall'app.
 - **Account**: accesso con Google o email, dati personali, obiettivi, piano, backup, versione e aggiornamenti.
 
 Le kcal sono valori medi indicativi per 100 g di parte edibile (margine di circa il 10 %). Appanzay non sostituisce chi ti segue.
@@ -33,6 +34,7 @@ css/app.css           stile
 js/config.js          configurazione Firebase (null = non collegato)
 js/version.js         versione (generato da scripts/bump_version.py)
 js/foods.js           enciclopedia neutra (una riga per alimento)
+js/patologie.js       liste comuni di alimenti per condizione
 js/app.js             logica dell'app
 js/firebase.js        login e Firestore
 modello/              formato del piano: esempio, istruzioni, elenco alimenti
@@ -58,7 +60,7 @@ La base è `js/foods.js`. Sopra la base l'app applica le modifiche dell'amminist
 
 | Dove la apri | Salvataggio |
 |---|---|
-| GitHub Pages con Firebase e login | Firestore (`users/{uid}/meta/{plan,settings,week,foods,meals,shop}`, `users/{uid}/days/{AAAA-MM-GG}`; catalogo comune in `catalogo/`) |
+| GitHub Pages con Firebase e login | Firestore (`users/{uid}/meta/{plan,settings,week,foods,meals,shop,salute}`, `users/{uid}/days/{AAAA-MM-GG}`; catalogo comune e liste per condizione in `catalogo/`) |
 | Senza Firebase o offline | `localStorage` del browser |
 | Artifact Claude (claude.ai) | account Claude |
 

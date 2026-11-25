@@ -18,6 +18,12 @@ service cloud.firestore {
         && request.resource.data.righe is list
         && request.resource.data.rimossi is list;
     }
+    match /catalogo/condizioni {
+      allow read: if request.auth != null;
+      allow write: if isAdmin()
+        && request.resource.data.blocchi is map
+        && request.resource.data.rimossi is list;
+    }
     match /catalogo/amministratori {
       allow read: if request.auth != null;
       // Il primo che lo crea diventa amministratore (solo se il documento non esiste ancora).
