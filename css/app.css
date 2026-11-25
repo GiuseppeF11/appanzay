@@ -354,3 +354,23 @@ pre.prompt{white-space:pre-wrap;font-size:12.5px;line-height:1.45;background:var
 .steps .moddet summary{color:var(--acc);font-weight:600;cursor:pointer;min-height:36px;display:flex;align-items:center}
 .steps .row2 .btn{white-space:nowrap;padding-left:8px;padding-right:8px}
 #shareUrl{font-size:14px;color:var(--mute);margin:8px 0 0}
+/* Inizio: tre strade */
+.choose{display:grid;gap:8px;margin:4px 0 0}
+.choose .opt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;width:100%;min-height:56px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--card);font:inherit;color:var(--ink);cursor:pointer}
+.choose .opt strong{font-size:16px}
+.choose .opt span{font-size:14px;color:var(--mute)}
+.choose .opt.on{border-color:var(--band);box-shadow:0 0 0 2px var(--band) inset}
+.chpanel:not(:empty){margin-top:14px}
+.medbox p{margin:0 0 10px}
+.custform .three{margin-top:10px}
+.custform .lab{font-weight:700;margin:14px 0 4px}
+.condg2{border-bottom:1px solid var(--line)}
+.condg2 summary{min-height:44px;display:flex;align-items:center;font-weight:600;cursor:pointer}
+.condg2 .condrow:last-child{border-bottom:0}
+.custform .btn.wide{margin-top:14px}
+.warnline{color:var(--warn)}
+.three .span2{grid-column:span 2}
+.condg2 summary{list-style:none;justify-content:space-between}
+.condg2 summary::-webkit-details-marker{display:none}
+.condg2 summary::after{content:"›";font-size:22px;color:var(--mute);transform:rotate(90deg);transition:transform .15s}
+.condg2[open] summary::after{transform:rotate(-90deg)}

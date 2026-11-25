@@ -10,6 +10,6 @@
 - Stato di un alimento (`finalize`): vince la scelta manuale dell'utente, poi il più restrittivo tra piano e condizioni; se il piano lo prevede e una condizione no, l'app lo dice. Alternativa non propone vietati e penalizza gli sconsigliati.
 - Amministratore del catalogo: `catalogo/amministratori` (`uids`); lo controllano le regole in `firestore.rules`. Se cambi le regole, ricorda all'utente di ripubblicarle nella console Firebase.
 - Formato del piano: `modello/ISTRUZIONI.md` (formato `appanzay-piano`, versione 1). Se cambi il formato aggiorna insieme `validatePlan` e `compilePlan` in `js/app.js`, `modello/ISTRUZIONI.md`, `modello/piano-esempio.json` e il prompt per l'AI (`AI_PROMPT`). All'utente si danno solo l'esempio e il prompt; l'elenco dei nomi del catalogo viene aggiunto in coda al prompt copiato (`aiPrompt`).
-- Grammature dei pasti: solo quelle del piano (menù ed equivalenze), mai inventate nel codice.
+- Grammature dei pasti: solo quelle del piano (menù ed equivalenze), mai inventate nel codice. Il piano su misura (`buildCustomPlan`) parte dalla dieta mediterranea (`modello/piano-esempio.json`), sostituisce vietati e sconsigliati con le opzioni delle sue equivalenze e moltiplica tutte le grammature per un unico fattore (fabbisogno Mifflin-St Jeor ÷ kcal medie del menù, tra 0,7 e 1,8). Niente piano su misura sotto i 18 anni, niente deficit in gravidanza o con IMC sotto 18,5, minimo 1200/1500 kcal.
 - Firebase: configurazione in `js/config.js`, regole in `firestore.rules`.
 - Prova le modifiche su schermi da 360-390 px prima di rilasciare.
