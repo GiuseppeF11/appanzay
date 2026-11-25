@@ -1485,6 +1485,9 @@ function renderAccount() {
     <div class="two"><div><label for="sW">Bicchieri d'acqua</label><input type="number" id="sW" min="1" max="20" value="${st.water}"></div>
     <div><label for="sG">ml per bicchiere</label><input type="number" id="sG" min="50" max="500" step="10" value="${st.glass}"></div></div>
     <p class="small muted">${PL && PL.obj.kcal ? `Il tuo piano: ${fmt(PL.obj.kcal)} kcal${PL.obj.water ? ` e ${(PL.obj.water * PL.obj.glass / 1000).toLocaleString('it-IT', { maximumFractionDigits: 1 })} L d'acqua` : ''}. ` : ''}Le modifiche si salvano da sole.</p></div>
+   <div class="card"><h3>Condividi Appanzay</h3><p class="small muted" style="margin-top:4px">Manda il link a chi vuole usarla: si registra e carica il piano della sua dieta.</p>
+    <input type="text" id="shareUrl" value="${esc(appUrl())}" readonly aria-label="Link dell'app">
+    <div class="row2">${navigator.share ? '<button class="btn pri" type="button" data-act="share">Condividi</button>' : ''}<button class="btn" type="button" data-act="copylink">Copia link</button></div></div>
    <div class="card"><h3>Aggiornamenti</h3><p class="small muted" style="margin-top:4px">Installata: versione ${esc(VER.version)}.</p>${upd}
     ${newer() ? '' : '<button class="btn" type="button" data-act="checkver">Controlla aggiornamenti</button>'}</div>
    <div class="card"><h3>Backup</h3>
@@ -1496,6 +1499,13 @@ function renderAccount() {
     <p class="small muted">Stati, menù, equivalenze e frequenze vengono dal tuo piano; le kcal dall'enciclopedia di Appanzay (valori medi indicativi). Appanzay non sostituisce chi ti segue.</p></div>
   </div>`;
   setSync(lastSync);
+}
+/* Link pubblico dell'app: quello della pagina se è pubblicata (es. GitHub Pages), altrimenti quello ufficiale */
+const APP_URL = 'https://giuseppef11.github.io/appanzay/';
+function appUrl() {
+  const h = location.hostname;
+  if (!h || h === 'localhost' || h === '127.0.0.1' || /claude|anthropic|usercontent/.test(h) || location.protocol === 'file:') return APP_URL;
+  return location.origin + location.pathname.replace(/[^/]*$/, '');
 }
 /* ---------- Accesso (Firebase) ---------- */
 function setGate(state, msg, offline) {
@@ -1669,6 +1679,8 @@ document.addEventListener('click', async e => {
     try { await navigator.clipboard.writeText(txt); toast('Prompt copiato: incollalo nella tua AI insieme alla dieta e all\'esempio', false) }
     catch (err) { dlg = { type: 'prompt' }; showDlg(`<h2>Copia il prompt</h2><p class="small muted">La copia automatica non funziona qui: tieni premuto il testo, seleziona tutto e copia.</p><textarea id="promptTxt" rows="10" readonly>${esc(txt)}</textarea><div class="acts"><span class="sp"></span><button class="btn" type="button" data-act="closedlg">Chiudi</button></div>`, { noActs: true }); $('promptTxt').select() }
   }
+  else if (a === 'share') { try { await navigator.share({ title: 'Appanzay', text: 'Appanzay: menù, calorie, acqua e alimenti del tuo piano alimentare.', url: appUrl() }) } catch (err) { if (err && err.name !== 'AbortError') toast('Condivisione non riuscita: usa "Copia link"', false) } }
+  else if (a === 'copylink') { try { await navigator.clipboard.writeText(appUrl()); toast('Link copiato', false) } catch (err) { const i = $('shareUrl'); if (i) { i.focus(); i.select() } toast('Seleziona il link e copialo', false) } }
   else if (a === 'planpaste') { const box = $(b.dataset.w === 'onboard' ? 'obPaste' : 'planPaste'); if (box) { box.hidden = !box.hidden; if (!box.hidden) box.querySelector('textarea').focus() } }
   else if (a === 'plancheck') { const box = $(b.dataset.w === 'onboard' ? 'obPaste' : 'planPaste'), t = box && box.querySelector('textarea').value.trim(); if (!t) { toast('Incolla prima il testo dell\'AI', false); return } checkPlanText(t, b.dataset.w) }
   else if (a === 'closedlg') closeDlg();
