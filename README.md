@@ -4,7 +4,7 @@ App per seguire la propria dieta giorno per giorno: menù, calorie, acqua, alime
 
 ## Cosa fa
 
-- **Piano personale**: stati degli alimenti (previsto, sconsigliato, vietato), menù settimanale, equivalenze, frequenze e obiettivi arrivano dal file del piano, salvato nell'account. Formato e istruzioni: [`modello/ISTRUZIONI.md`](modello/ISTRUZIONI.md).
+- **Piano personale**: stati degli alimenti (previsto, sconsigliato, vietato), menù settimanale, equivalenze, frequenze e obiettivi arrivano dal file del piano, salvato nell'account. Formato: [`modello/ISTRUZIONI.md`](modello/ISTRUZIONI.md).
 - **Oggi**: pasti del giorno da segnare come mangiati, calorie rispetto all'obiettivo, bicchieri d'acqua, note (e diario dei sintomi se il piano lo prevede). Le modifiche fatte qui valgono solo per quel giorno.
 - **Settimana**: il menù settimanale modificabile, con kcal per giorno, riepilogo della settimana e controllo delle frequenze del piano.
 - **I miei pasti**: pasti personalizzati da salvare, modificare e inserire nel menù su uno o più giorni.
@@ -18,13 +18,16 @@ App per seguire la propria dieta giorno per giorno: menù, calorie, acqua, alime
 
 Le kcal sono valori medi indicativi per 100 g di parte edibile (margine di circa il 10 %). Appanzay non sostituisce chi ti segue.
 
-## Il modello per preparare un piano
+## Come si carica un piano
 
 L'app non contiene un'intelligenza artificiale. Chi vuole usarla:
 
-1. scarica da `modello/` il piano di esempio, le istruzioni e l'elenco degli alimenti (anche dall'app: *Account → Il mio piano*);
-2. li dà alla propria AI insieme alla sua dieta, con il testo pronto che trova nelle istruzioni;
-3. carica il file `.json` ottenuto. L'app lo controlla e segnala errori e avvisi.
+1. scarica il piano di esempio (`modello/piano-esempio.json`);
+2. copia il prompt dall'app (in fondo c'è l'elenco dei nomi degli alimenti);
+3. dà alla propria AI la sua dieta, l'esempio e il prompt;
+4. carica la risposta come file `.json` o incollandola. L'app la controlla e segnala errori e avvisi.
+
+Il formato è descritto in [`modello/ISTRUZIONI.md`](modello/ISTRUZIONI.md).
 
 ## Struttura
 
@@ -37,7 +40,7 @@ js/foods.js           enciclopedia neutra (una riga per alimento)
 js/patologie.js       liste comuni di alimenti per condizione
 js/app.js             logica dell'app
 js/firebase.js        login e Firestore
-modello/              formato del piano: esempio, istruzioni, elenco alimenti
+modello/              formato del piano: esempio e descrizione del formato
 firestore.rules       regole di sicurezza del database
 manifest.webmanifest  installazione sul telefono (PWA)
 sw.js                 cache offline

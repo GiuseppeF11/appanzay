@@ -290,11 +290,6 @@ body.gate-loading>header,body.gate-loading>main,body.gate-loading>.updbar,body.g
 .steps{margin:6px 0 0;padding-left:22px;display:grid;gap:16px}
 .steps li{padding-left:4px}
 .steps .btn{margin-top:8px}
-.modlinks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
-.modlinks .btn{gap:5px;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;color:var(--ink);font-size:14px;margin:0;padding:6px 4px;line-height:1.2;min-width:0}
-.modlinks .ic{width:16px;height:16px;flex:0 0 16px}
-.modlinks .btn:not(:last-child){flex-direction:column;gap:2px;padding:8px 4px}
-.modlinks .btn:last-child{grid-column:1/-1;background:var(--soft)}
 .obalt{display:grid;gap:8px;margin-top:16px;justify-items:center}
 .planchk{border-radius:12px;padding:12px 14px;margin-top:14px;font-size:15px}
 .planchk.ok{background:var(--okbg)}.planchk.bad{background:var(--nobg)}
@@ -346,3 +341,15 @@ body.gate-loading>header,body.gate-loading>main,body.gate-loading>.updbar,body.g
 .verdict .btn.small{margin-top:8px;min-height:36px}
 .dlg .acts.col{flex-direction:column;align-items:stretch}
 .btn.bad{color:var(--no)}
+/* Procedura per caricare il piano */
+.steps a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ink)}
+.steps .row2{margin-top:8px}.steps .row2 .btn{margin-top:0}
+.steps .moddet{margin-top:6px}
+pre.prompt{white-space:pre-wrap;font-size:12.5px;line-height:1.45;background:var(--soft);border-radius:10px;padding:10px;margin:6px 0 0;max-height:260px;overflow:auto}
+.pastebox{margin-top:8px;display:grid;gap:8px}
+.pastebox textarea,#promptTxt{width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+.pastebox[hidden]{display:none}
+.steps .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.steps .row2 .btn{width:100%;justify-content:center}
+.steps .moddet summary{color:var(--acc);font-weight:600;cursor:pointer;min-height:36px;display:flex;align-items:center}
+.steps .row2 .btn{white-space:nowrap;padding-left:8px;padding-right:8px}

@@ -2,34 +2,16 @@
 
 Appanzay legge la tua dieta da **un file `.json`** con un formato preciso. Non serve scriverlo a mano: puoi farlo generare dalla tua intelligenza artificiale (Claude, ChatGPT, Gemini…) partendo dal piano che ti ha dato il tuo professionista.
 
-## In tre passi
+## Come si fa
 
-1. **Scarica il modello**: `piano-esempio.json` (un piano inventato da usare come riferimento), questo file di istruzioni ed `enciclopedia.md` (i nomi degli alimenti che l'app conosce).
-2. **Apri la tua AI** e allega: il PDF o le foto della tua dieta, `piano-esempio.json`, `ISTRUZIONI.md` ed `enciclopedia.md`. Poi incolla il testo della sezione [Testo per l'AI](#testo-per-lai).
-3. **Salva la risposta** come file `.json` e caricala in Appanzay: *Account → Il mio piano → Carica piano*. L'app controlla il file e ti dice cosa correggere.
+1. **Scarica l'esempio**: `piano-esempio.json`, un piano inventato che mostra la struttura del file.
+2. **Copia il prompt**: in Appanzay, *Copia il prompt* (nella schermata iniziale o in *Account → Il mio piano*). In fondo al prompt c'è l'elenco dei nomi degli alimenti che l'app conosce.
+3. **Chiedi alla tua AI** (Claude, ChatGPT, Gemini…): allega la tua dieta (PDF o foto) e l'esempio, poi incolla il prompt.
+4. **Carica la risposta** in Appanzay: come file `.json` oppure incollando il testo. L'app controlla il file e ti dice cosa correggere.
 
 > Il file contiene informazioni sulla tua salute: tienilo per te e caricalo solo nel tuo account.
 
-## Testo per l'AI
-
-Copia e incolla questo testo:
-
-```text
-Ti allego la mia dieta e tre file di riferimento dell'app Appanzay:
-piano-esempio.json (esempio del formato), ISTRUZIONI.md (regole del formato)
-ed enciclopedia.md (nomi degli alimenti che l'app conosce).
-
-Trasforma la mia dieta in un unico file JSON nel formato "appanzay-piano", versione 1,
-seguendo ISTRUZIONI.md e la struttura di piano-esempio.json. Regole:
-- Usa per gli alimenti i nomi esatti di enciclopedia.md (o un sinonimo elencato).
-  Se un alimento non c'è, aggiungilo nell'elenco "alimenti" con "kcal_100g" e "categoria".
-- Riporta solo quello che c'è nella mia dieta: non inventare grammature, stati o frequenze.
-  Se un dato manca, omettilo e scrivilo nel campo "info.note".
-- "stato" vale solo "previsto", "sconsigliato" o "vietato"; spiega il perché in "motivo".
-- Il menù ha 7 giorni (da "lunedi" a "domenica") e per ogni giorno i pasti elencati in "pasti".
-- Le equivalenze elencano, per ogni tipo di pasto, le alternative con le loro grammature.
-- Rispondi solo con il JSON, senza testo prima o dopo.
-```
+Il resto di questa pagina descrive il formato nel dettaglio, per chi sviluppa o vuole correggere il file a mano.
 
 ## Il formato
 
@@ -78,7 +60,7 @@ Elenco dei pasti del giorno, nell'ordine in cui si mangiano. `tipo` vale `colazi
 { "alimento": "Uovo", "quantita": 2, "unita": "uovo", "grammi": 110 }
 ```
 
-`grammi` è sempre obbligatorio (parte edibile). `quantita` e `unita` servono per mostrare "2 uova" invece dei grammi: `unita` va scritta al singolare, come in enciclopedia.
+`grammi` è sempre obbligatorio (parte edibile). `quantita` e `unita` servono per mostrare "2 uova" invece dei grammi: `unita` va scritta al singolare.
 
 ### `menu`
 
@@ -110,7 +92,7 @@ Lo stato di ogni alimento che il piano cita. Gli alimenti dell'enciclopedia non 
 
 | Campo | Obbligatorio | Note |
 |---|---|---|
-| `nome` | sì | Nome dell'enciclopedia, oppure un alimento nuovo. |
+| `nome` | sì | Nome dell'elenco degli alimenti dell'app, oppure un alimento nuovo. |
 | `stato` | no | `previsto`, `sconsigliato` o `vietato`. Senza stato l'alimento resta "non indicato" ma mostra la nota. |
 | `motivo` | no | Il perché, in breve. |
 | `nota` | no | Dettagli o avvertenze. |
@@ -163,7 +145,7 @@ Ruoli: `amido`, `proteina`, `verdura`, `frutta`, `condimento`, `latte`, `cereale
 
 ## Errori comuni
 
-- **Nomi che l'app non riconosce**: usa i nomi di `enciclopedia.md`, oppure aggiungi l'alimento in `alimenti` con `kcal_100g`.
+- **Nomi che l'app non riconosce**: usa i nomi dell'elenco in fondo al prompt, oppure aggiungi l'alimento in `alimenti` con `kcal_100g`.
 - **Giorni con l'accento** (`lunedì`): scrivili senza (`lunedi`).
 - **Grammi come testo** (`"100 g"`): scrivi solo il numero (`100`).
 - **Testo prima o dopo il JSON**: il file deve iniziare con `{` e finire con `}`.
