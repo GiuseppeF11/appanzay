@@ -1443,7 +1443,7 @@ function energia(d) {
   return { kcal, bmr: Math.round(bmr), tdee: Math.round(tdee), bmi, notes };
 }
 const r5 = x => Math.max(5, Math.round(x / 5) * 5);
-function buildCustomPlan(base, d, en) {
+function buildCustomPlan(base, d, en, noScale) {
   const E = clone(base), hits = new Map();
   (d.cond || []).forEach(id => { const c = condById.get(id); if (c) c.righe.forEach(r => r.foods.forEach(nm => { const f = catByNorm.get(norm(nm)), k = norm(f ? f.n : nm); if (RANK[r.s] > RANK[hits.get(k) || 'none']) hits.set(k, r.s) })) });
   const stC = n => { const f = catByNorm.get(norm(n)); return hits.get(norm(f ? f.n : n)) || 'none' };
@@ -1474,13 +1474,18 @@ function buildCustomPlan(base, d, en) {
   }));
   const dayK = days.map(g => Object.values(E.menu[g]).reduce((a, v) => a + (Array.isArray(v) ? v : v.alimenti).reduce((b, x) => b + x.grammi * kOf(x.alimento) / 100, 0), 0));
   const avg = dayK.reduce((a, b) => a + b, 0) / (dayK.length || 1);
-  const raw = avg ? en.kcal / avg : 1, factor = Math.min(1.8, Math.max(0.7, raw));
+  const raw = noScale || !avg ? 1 : en.kcal / avg, factor = Math.min(1.8, Math.max(0.7, raw));
   const sc = x => { if (x.quantita && x.unita) { const q = Math.max(1, Math.round(x.quantita * factor)); x.grammi = Math.round(x.grammi / x.quantita * q); x.quantita = q } else x.grammi = r5(x.grammi * factor) };
   days.forEach(g => Object.values(E.menu[g]).forEach(v => (Array.isArray(v) ? v : v.alimenti).forEach(sc)));
   Object.values(E.equivalenze || {}).forEach(cs => cs.forEach(c => c.opzioni.forEach(o => o.forEach(sc))));
   (E.frequenze || []).forEach(f => { if (f.grammi_minimi) f.grammi_minimi = r5(f.grammi_minimi * factor) });
-  E.obiettivi = Object.assign({}, E.obiettivi, { kcal: en.kcal });
   const cn = (d.cond || []).map(id => (condById.get(id) || {}).n).filter(Boolean);
+  if (noScale) {
+    E.info = Object.assign({}, E.info, { nome: 'Dieta mediterranea' + (cn.length ? ' adattata' : ''), data: ymd(new Date()),
+      note: (cn.length ? `Adattata a: ${cn.join(', ')}. ` : '') + (E.info.note || ''), origine: { tipo: 'mediterranea', condizioni: d.cond || [] } });
+    return { raw: E, subs, removed, factor: 1, clamped: false, avg: Math.round(avg) };
+  }
+  E.obiettivi = Object.assign({}, E.obiettivi, { kcal: en.kcal });
   const fx = factor.toLocaleString('it-IT', { maximumFractionDigits: 2 });
   E.info = { nome: `Piano su misura · ${fmt(en.kcal)} kcal`, autore: 'Appanzay', data: ymd(new Date()),
     note: `Base: dieta mediterranea con porzioni ×${fx}. Fabbisogno stimato con la formula di Mifflin-St Jeor da sesso, età, peso, altezza, attività e obiettivo.${cn.length ? ' Adattato a: ' + cn.join(', ') + '.' : ''} Non è un piano medico: con patologie o obiettivi importanti fatti seguire da un professionista.`,
@@ -1507,6 +1512,19 @@ function custReport(r, en, where) {
 }
 const pfx = where => where === 'onboard' ? 'ob' : 'pl';
 const CHOOSE = {};
+function condChecklist(name) {
+  const on = new Set(SALUTE.cond || []);
+  return COND_GROUPS.map(g => { const cs = CONDS.filter(c => c.g === g); const nOn = cs.filter(c => on.has(c.id)).length; return cs.length ? `<details class="condg2"${nOn ? ' open' : ''}><summary>${esc(g)}${nOn ? ` · ${nOn}` : ''}</summary>${cs.map(c => `<label class="condrow"><input type="checkbox" name="${name}" value="${esc(c.id)}"${on.has(c.id) ? ' checked' : ''}><span>${esc(c.n)}</span></label>`).join('')}</details>` : '' }).join('');
+}
+function medReport(r, where) {
+  const list = (arr, n) => arr.length ? `<ul class="chk">${arr.slice(0, n).map(x => `<li>${esc(x)}</li>`).join('')}${arr.length > n ? `<li>…e altre ${arr.length - n}</li>` : ''}</ul>` : '';
+  return `<div class="planchk ok"><strong>Dieta mediterranea adattata</strong>
+   ${r.subs.length ? `<p class="small">Sostituzioni per le tue condizioni (${r.subs.length}):</p>${list(r.subs, 6)}` : '<p class="small">Nessuna sostituzione necessaria: il menù va già bene per le tue condizioni.</p>'}
+   ${r.removed.length ? `<p class="small">Tolti senza alternativa (${r.removed.length}):</p>${list(r.removed, 6)}` : ''}
+   <p class="small muted">Calorie e porzioni restano quelle della dieta mediterranea (circa 1700 kcal). Per adattarle a te usa il piano su misura.</p>
+   ${where === 'account' && PL ? '<p class="small">Sostituisce il piano e il menù della settimana attuali.</p>' : ''}
+   <button class="btn pri wide" type="button" data-act="customapply" data-w="${where}">Usa questo piano</button></div>`;
+}
 function customForm(where) {
   const p = pfx(where), st = S.settings, on = new Set(SALUTE.cond || []);
   const sel = (id, obj, cur) => `<select id="${p}${id}"><option value="">Scegli…</option>${Object.entries(obj).map(([k, [l]]) => `<option value="${k}"${cur === k ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
@@ -1518,7 +1536,7 @@ function customForm(where) {
    <label for="${p}cuA">Attività fisica</label>${sel('cuA', ATT, st.attivita)}
    <label for="${p}cuO">Obiettivo</label>${sel('cuO', OBI, st.obiettivo)}
    <p class="lab">Intolleranze, allergie e patologie</p>
-   ${COND_GROUPS.map(g => { const cs = CONDS.filter(c => c.g === g); const nOn = cs.filter(c => on.has(c.id)).length; return cs.length ? `<details class="condg2"${nOn ? ' open' : ''}><summary>${esc(g)}${nOn ? ` · ${nOn}` : ''}</summary>${cs.map(c => `<label class="condrow"><input type="checkbox" name="${p}cond" value="${esc(c.id)}"${on.has(c.id) ? ' checked' : ''}><span>${esc(c.n)}</span></label>`).join('')}</details>` : '' }).join('')}
+   ${condChecklist(p + 'cond')}
    <p class="bad small" id="${p}CuErr" hidden></p>
    <button class="btn pri wide" type="button" data-act="custombuild" data-w="${where}">Crea il mio piano</button>
    <div id="${p}CuRes"></div></div>`;
@@ -1526,7 +1544,12 @@ function customForm(where) {
 function chooserPanel(where) {
   const m = CHOOSE[where];
   if (m === 'piano') return planSteps(where);
-  if (m === 'med') return `<div class="medbox"><p>Un piano equilibrato da circa <strong>1700 kcal</strong> con 5 pasti al giorno, il menù di tutta la settimana e le alternative per ogni pasto. Puoi cambiarlo quando vuoi.</p>${where === 'account' && PL ? '<p class="small">Sostituisce il piano e il menù della settimana attuali.</p>' : ''}<button class="btn pri wide" type="button" data-act="planexample" data-w="${where}">Comincia con la dieta mediterranea</button></div>`;
+  if (m === 'med') { const p = pfx(where); return `<div class="medbox custform"><p>Un piano equilibrato da circa <strong>1700 kcal</strong> con 5 pasti al giorno, il menù di tutta la settimana e le alternative per ogni pasto. Puoi cambiarlo quando vuoi.</p>
+   <p class="lab">Hai intolleranze, allergie o patologie?</p><p class="small muted" style="margin:0 0 4px">Se ne scegli, sostituisco gli alimenti non adatti. Altrimenti lascia tutto vuoto.</p>
+   ${condChecklist(p + 'mcond')}
+   ${where === 'account' && PL ? '<p class="small">Sostituisce il piano e il menù della settimana attuali.</p>' : ''}
+   <button class="btn pri wide" type="button" data-act="medbuild" data-w="${where}">Comincia</button>
+   <div id="${p}MedRes"></div></div>` }
   if (m === 'custom') return customForm(where);
   return '';
 }
@@ -1804,7 +1827,15 @@ document.addEventListener('click', async e => {
     const r = buildCustomPlan(base, d, en); pendingPlan = r.raw;
     if (out) { out.innerHTML = custReport(r, en, w); out.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) }
   }
-  else if (a === 'customapply') { if (!pendingPlan) return; const w = b.dataset.w; applyPlan(pendingPlan, true); CHOOSE.account = null; toast('Piano su misura attivo: ' + fmt(PL.obj.kcal) + ' kcal', false); if (w === 'onboard') afterData(); else render() }
+  else if (a === 'medbuild') {
+    const w = b.dataset.w, p = pfx(w), cond = [...document.querySelectorAll(`input[name=${p}mcond]:checked`)].map(x => x.value);
+    const base = await loadExample(); if (!base) { toast('Non riesco a scaricare la dieta mediterranea: controlla la connessione', false); return }
+    SALUTE.cond = cond; rebuildFoods(); save('salute');
+    if (!cond.length) { applyPlan(base, true); CHOOSE.account = null; toast('Dieta mediterranea attiva', false); afterData(); return }
+    const r = buildCustomPlan(base, { cond }, null, true); pendingPlan = r.raw;
+    const out = $(p + 'MedRes'); if (out) { out.innerHTML = medReport(r, w); out.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) }
+  }
+  else if (a === 'customapply') { if (!pendingPlan) return; const w = b.dataset.w; applyPlan(pendingPlan, true); CHOOSE.account = null; toast((PL.info.origine && PL.info.origine.tipo === 'mediterranea' ? PL.info.nome : 'Piano su misura') + ' attivo: ' + fmt(PL.obj.kcal) + ' kcal', false); if (w === 'onboard') afterData(); else render() }
   else if (a === 'planexport') {
     const txt = JSON.stringify(S.plan, null, 2);
     try { const url = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); const l = document.createElement('a'); l.href = url; l.download = 'il-mio-piano.json'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000) }
