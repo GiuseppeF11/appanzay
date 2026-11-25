@@ -4,8 +4,10 @@
  *   users/{uid}/meta/week       menù settimanale
  *   users/{uid}/meta/foods      alimenti aggiunti da te
  *   users/{uid}/meta/plan       piano della dieta dell'utente
+ *   users/{uid}/meta/salute     condizioni scelte e alimenti segnati a mano dall'utente
  *   users/{uid}/days/{AAAA-MM-GG}  diario del giorno (pasti, acqua, sintomi, note)
  *   catalogo/modifiche          modifiche al catalogo alimenti comune (le scrive solo l'amministratore)
+ *   catalogo/condizioni         modifiche alle liste per condizione (solo l'amministratore)
  *   catalogo/amministratori     { uids: [...] } chi può modificare il catalogo comune
  */
 const V = '10.14.1';

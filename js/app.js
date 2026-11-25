@@ -59,6 +59,83 @@ function buildCatalog() {
 }
 try { const c = JSON.parse(localStorage.getItem('apz:catalogo') || 'null'); if (c && Array.isArray(c.righe)) CAT_EDIT = c } catch (e) { }
 buildCatalog();
+
+/* Liste comuni per condizione = js/patologie.js + modifiche dell'amministratore
+   (Firestore catalogo/condizioni: { blocchi: {id: testo del blocco}, rimossi: [id] }). Dati generici, uguali per tutti. */
+const COND_GROUPS = ['Intolleranze e allergie', 'Apparato digerente', 'Rene', 'Metabolismo e cuore', 'Condizioni particolari'];
+const COND_ST = { vietato: 'no', sconsigliato: 'warn' }, COND_WORD = { no: 'vietato', warn: 'sconsigliato' };
+const RANK = { none: 0, custom: 0, ok: 1, warn: 2, no: 3 };
+function splitBlocks(raw) {
+  const out = []; let cur = null;
+  String(raw || '').split('\n').forEach(l => { l = l.trim(); if (!l || l.startsWith('#')) return; if (l[0] === '@') { cur = [l]; out.push(cur) } else if (cur) cur.push(l) });
+  return out.map(b => b.join('\n'));
+}
+function parseCond(text) {
+  const lines = String(text || '').split('\n').map(x => x.trim()).filter(Boolean);
+  if (!lines.length || lines[0][0] !== '@') return null;
+  const [id, g, n, nota] = lines[0].slice(1).split('|').map(x => (x || '').trim());
+  if (!/^[a-z0-9_]+$/.test(id || '') || !n) return null;
+  const righe = [], bad = [];
+  lines.slice(1).forEach(l => {
+    const [st, why, fs] = l.split('|').map(x => (x || '').trim()), s = COND_ST[norm(st)];
+    if (!s || !fs) { bad.push(l); return }
+    righe.push({ s, why: why || (s === 'no' ? 'Vietato' : 'Sconsigliato'), foods: fs.split(';').map(x => x.trim()).filter(Boolean) });
+  });
+  return { id, g: COND_GROUPS.includes(g) ? g : COND_GROUPS[COND_GROUPS.length - 1], n, nota: nota || '', righe, bad };
+}
+const condText = c => [`@${c.id}|${c.g}|${c.n}|${c.nota}`].concat(c.righe.map(r => `${COND_WORD[r.s]}|${r.why}|${r.foods.join(';')}`)).join('\n');
+const BASE_COND = splitBlocks(window.APZ_CONDIZIONI_RAW).map(parseCond).filter(Boolean);
+const BASE_COND_BY = new Map(BASE_COND.map(c => [c.id, c]));
+let COND_EDIT = { blocchi: {}, rimossi: [] };
+try { const c = JSON.parse(localStorage.getItem('apz:condizioni') || 'null'); if (c && c.blocchi) COND_EDIT = c } catch (e) { }
+let CONDS = [];
+const condById = new Map();
+function buildConds() {
+  const del = new Set(COND_EDIT.rimossi || []), over = new Map();
+  Object.entries(COND_EDIT.blocchi || {}).forEach(([id, t]) => { const c = parseCond(t); if (c && c.id === id) over.set(id, c) });
+  CONDS = BASE_COND.filter(c => !del.has(c.id)).map(c => over.get(c.id) || c).concat([...over.values()].filter(c => !BASE_COND_BY.has(c.id) && !del.has(c.id)));
+  condById.clear(); CONDS.forEach(c => condById.set(c.id, c));
+}
+buildConds();
+/* Salute dell'utente (solo nel suo account): condizioni scelte e alimenti segnati a mano { chiave normalizzata: {n, s, nota} } */
+let SALUTE = { cond: [], man: {} };
+function condHits() {
+  const m = new Map();
+  (SALUTE.cond || []).forEach(id => {
+    const c = condById.get(id); if (!c) return;
+    c.righe.forEach(r => r.foods.forEach(nm => {
+      const f = catByNorm.get(norm(nm)), k = norm(f ? f.n : nm);
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push({ s: r.s, why: r.why, c: c.n });
+    }));
+  });
+  return m;
+}
+const lc1 = t => t ? t[0].toLowerCase() + t.slice(1) : t;
+/* Stato finale: vince la scelta manuale, poi il più restrittivo tra piano e condizioni; i disaccordi si dicono. */
+function finalize(o, hits) {
+  const k = norm(o.n), h = hits.get(k) || [], man = SALUTE.man && SALUTE.man[k];
+  const base = o.s === 'custom' ? 'none' : o.s;
+  const top = h.reduce((a, x) => RANK[x.s] > RANK[a] ? x.s : a, 'none');
+  const reasonOf = st => [...new Map(h.filter(x => x.s === st).map(x => [x.c, `${x.c}: ${lc1(x.why)}`])).values()].join(' · ');
+  const notes = [];
+  o.conds = h; o.ps = o.s;
+  let s = o.s, r = o.r;
+  if (RANK[top] > RANK[base]) {
+    if (base === 'ok') { o.conf = true; notes.push(`Il tuo piano lo prevede, ma per le tue condizioni è ${COND_WORD[top]}: chiedi a chi ti segue.`) }
+    else if (base === 'warn') notes.push('Nel piano: sconsigliato' + (o.r && o.r !== ST.warn ? ' (' + lc1(o.r) + ')' : '') + '.');
+    s = top; r = reasonOf(top);
+  } else if (h.length) notes.push('Anche: ' + [...new Map(h.map(x => [x.c, `${x.c} (${COND_WORD[x.s]})`])).values()].join(', ') + '.');
+  if (man && ['ok', 'warn', 'no'].includes(man.s)) {
+    o.man = man;
+    const was = ST[s === 'custom' ? 'none' : s].toLowerCase();
+    if (man.s !== s) notes.unshift(r && norm(r).startsWith(norm(was)) ? `Senza la tua scelta: ${lc1(r)}.` : `Senza la tua scelta sarebbe ${was}${r ? ': ' + lc1(r) : ''}.`);
+    s = man.s; r = 'Segnato da te' + (man.nota ? ': ' + man.nota : '');
+  }
+  o.s = s; o.r = r;
+  if (notes.length) o.note = [o.note].concat(notes).filter(Boolean).join(' ');
+  return o;
+}
 function resolveName(n, extra) {
   const k = norm(n);
   if (extra && extra.has(k)) return extra.get(k).n;
@@ -69,7 +146,9 @@ function rebuildFoods() {
   FOODS = CATALOG.map(f => {
     const r = rules.get(norm(f.n));
     return { n: f.n, c: f.c, k: f.k, units: f.units, alias: f.alias, cat: true, s: r && r.s ? r.s : 'none', r: r && r.r ? r.r : (r && r.s ? ST[r.s] : (PL ? 'Non indicato dal piano' : 'Nessun piano caricato')), note: [r && r.note, f.nota].filter(Boolean).join(' '), p: r && r.p ? r.p : '' };
-  }).concat(PL ? PL.extraFoods : []);
+  }).concat(PL ? PL.extraFoods.map(f => Object.assign({}, f)) : []);
+  const hits = condHits();
+  FOODS.forEach(f => finalize(f, hits));
 }
 const toIt = x => { const o = { f: x.f, g: x.g }; if (x.q && x.u) { o.q = x.q; o.u = x.u } return o };
 function compilePlan(raw) {
@@ -134,7 +213,7 @@ const S = { settings: { kcal: 1800, water: 10, glass: 200 }, plan: null, week: n
 let undoStack = null;
 
 function allFoods() {
-  return FOODS.concat(S.custom.map(c => ({ n: c.n, c: 'Personali', s: 'custom', k: +c.k || 0, r: c.src === 'off' ? 'Prodotto confezionato' : 'Aggiunto da te', note: c.src === 'off' ? 'Da Open Food Facts: non verificato con il tuo piano.' : 'Non verificato con il tuo piano.', p: '', units: c.pg ? [{ one: 'porzione', many: 'porzioni', g: +c.pg }] : [], alias: [] })));
+  return FOODS.concat(S.custom.map(c => SALUTE.man[norm(c.n)] ? finalize({ n: c.n, c: 'Personali', s: 'custom', k: +c.k || 0, r: c.src === 'off' ? 'Prodotto confezionato' : 'Aggiunto da te', note: c.src === 'off' ? 'Da Open Food Facts: non verificato con il tuo piano.' : 'Non verificato con il tuo piano.', p: '', units: c.pg ? [{ one: 'porzione', many: 'porzioni', g: +c.pg }] : [], alias: [] }, new Map()) : ({ n: c.n, c: 'Personali', s: 'custom', k: +c.k || 0, r: c.src === 'off' ? 'Prodotto confezionato' : 'Aggiunto da te', note: c.src === 'off' ? 'Da Open Food Facts: non verificato con il tuo piano.' : 'Non verificato con il tuo piano.', p: '', units: c.pg ? [{ one: 'porzione', many: 'porzioni', g: +c.pg }] : [], alias: [] })));
 }
 function foodBy(name) {
   const k = norm(name), all = allFoods(), f = all.find(x => norm(x.n) === k); if (f) return f;
@@ -222,7 +301,7 @@ let FB = null, fbUser = null; // Firebase
 
 function dataFor(key) {
   if (key === 'settings') return S.settings; if (key === 'week') return { days: S.week }; if (key === 'foods') return { list: S.custom };
-  if (key === 'meals') return { list: S.library }; if (key === 'shop') return S.shop; if (key === 'plan') return S.plan;
+  if (key === 'meals') return { list: S.library }; if (key === 'shop') return S.shop; if (key === 'plan') return S.plan; if (key === 'salute') return SALUTE;
   return S.days[key.slice(4)];
 }
 function applyDoc(key, v) {
@@ -233,6 +312,7 @@ function applyDoc(key, v) {
   else if (key === 'meals' && Array.isArray(v.list)) S.library = v.list;
   else if (key === 'shop') S.shop = Object.assign({ checked: {}, extra: [] }, v);
   else if (key === 'plan') setPlan(v);
+  else if (key === 'salute') { SALUTE = { cond: Array.isArray(v.cond) ? v.cond : [], man: v.man && typeof v.man === 'object' ? v.man : {} }; rebuildFoods() }
   else if (key.startsWith('day:')) S.days[key.slice(4)] = Object.assign({ water: 0, eaten: {}, sym: null, note: '' }, v);
 }
 const chains = {}, timers = {};
@@ -277,7 +357,7 @@ async function fetchDoc(key) {
 const loaded = new Set();
 async function loadDay(d) { if (loaded.has(d)) return; loaded.add(d); await fetchDoc('day:' + d) }
 async function loadAll() {
-  await Promise.all(['plan', 'settings', 'week', 'foods', 'meals', 'shop'].map(fetchDoc).concat(loadCatalog()));
+  await Promise.all(['plan', 'settings', 'week', 'foods', 'meals', 'shop', 'salute'].map(fetchDoc).concat(loadCatalog()));
   refreshCatalog();
   if (!S.week) S.week = defaultWeek();
   loaded.clear(); await loadDay(S.date);
@@ -302,7 +382,7 @@ function firebaseAdapter(fb, uid) {
 }
 /* Al primo accesso porta nel database i dati già inseriti in questo browser */
 async function migrateLocal() {
-  for (const key of ['plan', 'settings', 'week', 'foods', 'meals', 'shop']) {
+  for (const key of ['plan', 'settings', 'week', 'foods', 'meals', 'shop', 'salute']) {
     const local = lsGet(key); if (!local) continue;
     try { const remote = await B.get(key); if (!remote) await B.set(key, local) } catch (e) { }
   }
@@ -314,11 +394,13 @@ async function migrateLocal() {
 
 /* ---------- Catalogo alimenti comune (modificabile dall'amministratore) ---------- */
 const ADMIN = { known: false, exists: false, me: false };
-function refreshCatalog() { buildCatalog(); if (S.plan) PL = compilePlan(S.plan); rebuildFoods() }
+function refreshCatalog() { buildCatalog(); buildConds(); if (S.plan) PL = compilePlan(S.plan); rebuildFoods() }
 async function loadCatalog() {
   const c = lsGet('catalogo'); if (c && Array.isArray(c.righe)) CAT_EDIT = c;
+  const cc = lsGet('condizioni'); if (cc && cc.blocchi) COND_EDIT = cc;
   if (!FB || !fbUser) return;
   await Promise.all([
+    FB.getShared('condizioni').then(v => { COND_EDIT = v ? { blocchi: v.blocchi || {}, rimossi: v.rimossi || [], aggiornato: v.aggiornato || '' } : { blocchi: {}, rimossi: [] }; lsSet('condizioni', COND_EDIT) }).catch(() => { }),
     FB.getShared('modifiche').then(v => { CAT_EDIT = v ? { righe: v.righe || [], rimossi: v.rimossi || [], aggiornato: v.aggiornato || '' } : { righe: [], rimossi: [] }; lsSet('catalogo', CAT_EDIT) }).catch(() => { }),
     FB.getShared('amministratori').then(a => { const u = a && Array.isArray(a.uids) ? a.uids : []; Object.assign(ADMIN, { known: true, exists: u.length > 0, me: u.includes(fbUser.uid) }) }).catch(() => { ADMIN.known = false }),
   ]);
@@ -345,6 +427,103 @@ async function publishCatalog(next, msg) {
   catch (e) { toast(e && e.code === 'permission-denied' ? 'Non salvato: Firestore rifiuta la modifica. Controlla di aver pubblicato le regole nuove.' : 'Non salvato: controlla la connessione e riprova.', false); return false }
   CAT_EDIT = body; lsSet('catalogo', body); refreshCatalog(); renderDatalist(); render();
   toast(msg + '. Gli altri lo vedono al prossimo avvio dell\'app.', false); return true;
+}
+async function publishConds(next, msg) {
+  if (!FB || !fbUser || !ADMIN.me) { toast('Solo l\'amministratore può modificare le liste', false); return false }
+  const body = { blocchi: next.blocchi, rimossi: next.rimossi, aggiornato: new Date().toISOString() };
+  toast('Pubblicazione…', false);
+  try { await FB.setShared('condizioni', body) }
+  catch (e) { toast(e && e.code === 'permission-denied' ? 'Non salvato: Firestore rifiuta la modifica. Controlla di aver pubblicato le regole nuove.' : 'Non salvato: controlla la connessione e riprova.', false); return false }
+  COND_EDIT = body; lsSet('condizioni', body); refreshCatalog(); render();
+  toast(msg + '. Gli altri lo vedono al prossimo avvio dell\'app.', false); return true;
+}
+/* ---------- Salute e preferenze (utente) ---------- */
+function saveSalute(msg) { rebuildFoods(); renderDatalist(); save('salute'); render(); if (msg) toast(msg, false) }
+function saluteCard() {
+  const sel = (SALUTE.cond || []).map(id => condById.get(id)).filter(Boolean);
+  const man = Object.entries(SALUTE.man || {}).sort((a, b) => a[1].n.localeCompare(b[1].n, 'it'));
+  return `<div class="card salute"><h3>Salute e preferenze</h3>
+   <p class="small muted">Restano solo nel tuo account. Lo stato di un alimento: vince la tua scelta, poi il più restrittivo tra piano e condizioni.</p>
+   <h4>Condizioni</h4>
+   ${sel.length ? `<div class="chips">${sel.map(c => `<span class="chip">${esc(c.n)}</span>`).join('')}</div>` : '<p class="small muted">Nessuna condizione scelta.</p>'}
+   <button class="btn" type="button" data-act="condpick">${sel.length ? 'Modifica condizioni' : 'Scegli condizioni'}</button>
+   <h4>Alimenti segnati da te</h4>
+   ${man.length ? `<ul class="manlist">${man.map(([k, m]) => `<li><span class="mn">${esc(m.n)}${m.nota ? `<small>${esc(m.nota)}</small>` : ''}</span><span class="badge ${m.s}">${ST[m.s]}</span><button class="icon small" type="button" data-act="markedit" data-n="${esc(m.n)}" aria-label="Modifica ${esc(m.n)}">✎</button><button class="icon small" type="button" data-act="markdel" data-k="${esc(k)}" aria-label="Togli ${esc(m.n)}">×</button></li>`).join('')}</ul>` : '<p class="small muted">Nessuno. Puoi segnare un alimento anche dalla sezione Alimenti.</p>'}
+   <button class="btn" type="button" data-act="markfood">+ Segna un alimento</button></div>`;
+}
+function openCondPick() {
+  dlg = { type: 'conds' };
+  const on = new Set(SALUTE.cond || []);
+  showDlg(`<h2>Le tue condizioni</h2>
+   <p class="small muted">Gli alimenti da evitare o limitare vengono segnati in tutta l'app. Sono indicazioni generali: il piano di chi ti segue resta il riferimento.</p>
+   ${COND_GROUPS.map(g => { const cs = CONDS.filter(c => c.g === g); return cs.length ? `<fieldset class="condg"><legend>${esc(g)}</legend>${cs.map(c => `<label class="condrow"><input type="checkbox" name="cond" value="${esc(c.id)}"${on.has(c.id) ? ' checked' : ''}><span>${esc(c.n)}${c.nota ? `<small>${esc(c.nota)}</small>` : ''}</span></label>`).join('')}</fieldset>` : '' }).join('')}`, {});
+}
+function markList() {
+  const q = $('mkQ').value.trim(), all = allFoods();
+  const res = q ? all.filter(f => matches(f, q)).slice(0, 8) : [];
+  const ex = q ? exactOf(q, all) : null;
+  if (ex && !res.includes(ex)) res.unshift(ex);
+  $('mkList').innerHTML = res.map(f => `<li><button type="button" class="mkpick${dlg.n === f.n ? ' on' : ''}" data-act="mkpick" data-n="${esc(f.n)}">${esc(f.n)} <span class="badge ${f.s}">${ST[f.s]}</span></button></li>`).join('');
+}
+function openMark(name) {
+  const k = name ? norm(name) : '', m = k && SALUTE.man[k];
+  dlg = { type: 'mark', n: name || '' };
+  showDlg(`<h2>Segna un alimento</h2>
+   <label for="mkQ">Alimento</label><input type="text" id="mkQ" value="${esc(name || '')}" placeholder="Es. kiwi, pane, latte" autocomplete="off" autocapitalize="off" spellcheck="false">
+   <ul id="mkList" class="mklist"></ul>
+   <fieldset class="segr"><legend>Per me è</legend>${[['no', 'Vietato'], ['warn', 'Sconsigliato'], ['ok', 'Previsto']].map(([v, l]) => `<label><input type="radio" name="mkS" value="${v}"${(m ? m.s : 'no') === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
+   <label for="mkN">Nota (facoltativa)</label><input type="text" id="mkN" maxlength="120" value="${esc(m && m.nota || '')}" placeholder="Es. mi dà gonfiore" autocomplete="off">
+   <p class="bad small" id="mkErr" hidden></p>`, { del: !!m });
+  $('mkQ').addEventListener('input', () => { dlg.n = ''; markList() });
+  markList();
+}
+function condCardAdmin() {
+  if (!ADMIN.me) return '';
+  const nMod = Object.keys(COND_EDIT.blocchi || {}).length + (COND_EDIT.rimossi || []).length;
+  return `<div class="card"><h3>Liste per condizione</h3><p>Sei l'amministratore: le liste valgono per tutti gli utenti.</p>
+   <p class="small muted">${CONDS.length} condizioni · ${nMod ? nMod + (nMod === 1 ? ' modifica' : ' modifiche') + ' rispetto alla base' : 'nessuna modifica rispetto alla base'}${COND_EDIT.aggiornato ? ' · ultima il ' + esc(new Date(COND_EDIT.aggiornato).toLocaleDateString('it-IT')) : ''}.</p>
+   <details class="condadm"><summary>Mostra le condizioni</summary>${COND_GROUPS.map(g => { const cs = CONDS.filter(c => c.g === g); return cs.length ? `<p class="small muted cg">${esc(g)}</p><ul>${cs.map(c => `<li><button class="linkbtn" type="button" data-act="condedit" data-id="${esc(c.id)}">${esc(c.n)}</button> <span class="small muted">${c.righe.reduce((a, r) => a + r.foods.length, 0)} alimenti${COND_EDIT.blocchi && COND_EDIT.blocchi[c.id] ? ' · modificata' : ''}</span></li>`).join('')}</ul>` : '' }).join('')}</details>
+   <div class="row2"><button class="btn" type="button" data-act="condnew">+ Nuova condizione</button></div></div>`;
+}
+function condRulesCheck() {
+  const lines = $('ceR').value.split('\n').map(x => x.trim()).filter(Boolean), bad = [], unk = new Set();
+  let n = 0;
+  lines.forEach(l => {
+    const [st, , fs] = l.split('|').map(x => (x || '').trim());
+    if (!COND_ST[norm(st || '')] || !fs) { bad.push(l); return }
+    fs.split(';').map(x => x.trim()).filter(Boolean).forEach(f => { n++; if (!catByNorm.has(norm(f))) unk.add(f) });
+  });
+  $('ceChk').innerHTML = `<span class="small">${n} alimenti in ${lines.length - bad.length} righe.</span>${bad.length ? `<br><span class="bad small">Righe non valide: ${bad.slice(0, 3).map(x => '«' + esc(x.slice(0, 40)) + '»').join(', ')}</span>` : ''}${unk.size ? `<br><span class="bad small">Non nel catalogo (ignorati): ${[...unk].slice(0, 8).map(esc).join(', ')}${unk.size > 8 ? '…' : ''}</span>` : ''}`;
+  return { bad, n };
+}
+function openCondEdit(id) {
+  const c = id ? condById.get(id) : null, base = c && BASE_COND_BY.get(c.id);
+  dlg = { type: 'condedit', id: c ? c.id : null };
+  showDlg(`<h2>${c ? 'Modifica condizione' : 'Nuova condizione'}</h2>
+   <p class="small muted">Vale per tutti gli utenti che la scelgono. Una riga per gruppo di alimenti: <code>vietato|motivo|Alimento;Alimento</code> oppure <code>sconsigliato|…</code></p>
+   ${c ? '' : '<label for="ceI">Codice (minuscole, numeri e _ ; non si cambia più)</label><input type="text" id="ceI" maxlength="30" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="es. all_kiwi" required>'}
+   <label for="ceN">Nome</label><input type="text" id="ceN" maxlength="60" value="${esc(c ? c.n : '')}" required autocomplete="off">
+   <label for="ceG">Gruppo</label><select id="ceG">${COND_GROUPS.map(g => `<option${c && c.g === g ? ' selected' : ''}>${g}</option>`).join('')}</select>
+   <label for="ceO">Nota per l'utente</label><input type="text" id="ceO" maxlength="200" value="${esc(c ? c.nota : '')}" autocomplete="off">
+   <label for="ceR">Alimenti</label><textarea id="ceR" rows="8" spellcheck="false" autocapitalize="off">${esc(c ? c.righe.map(r => `${COND_WORD[r.s]}|${r.why}|${r.foods.join(';')}`).join('\n') : 'vietato||')}</textarea>
+   <p id="ceChk"></p><p class="bad small" id="ceErr" hidden></p>
+   ${c && base && condText(base) !== condText(c) ? '<button class="linkbtn" type="button" data-act="condrestore">Ripristina la lista originale</button>' : ''}`, { del: !!c });
+  $('dDel').textContent = 'Elimina';
+  $('ceR').addEventListener('input', condRulesCheck); condRulesCheck();
+}
+const condClean = v => String(v || '').replace(/[|\n\r`@]/g, ' ').replace(/\s+/g, ' ').trim();
+function submitCondEdit(D) {
+  const id = D.id || $('ceI').value.trim(), n = condClean($('ceN').value), err = t => { $('ceErr').textContent = t; $('ceErr').hidden = false };
+  if (!/^[a-z0-9_]{2,30}$/.test(id)) return err('Codice non valido: solo lettere minuscole, numeri e _.');
+  if (!D.id && condById.has(id)) return err('Esiste già una condizione con questo codice.');
+  if (!n) return err('Scrivi il nome.');
+  const chk = condRulesCheck(); if (chk.bad.length) return err('Correggi le righe non valide.'); if (!chk.n) return err('Inserisci almeno un alimento.');
+  const righe = $('ceR').value.split('\n').map(x => x.trim()).filter(Boolean).map(l => { const [st, why, fs] = l.split('|'); return `${norm(st).trim()}|${condClean(why)}|${fs.split(';').map(x => condClean(x)).filter(Boolean).join(';')}` });
+  const text = [`@${id}|${$('ceG').value}|${n}|${condClean($('ceO').value)}`].concat(righe).join('\n');
+  const c = parseCond(text); if (!c) return err('Dati non validi.');
+  const blocchi = Object.assign({}, COND_EDIT.blocchi), rimossi = (COND_EDIT.rimossi || []).filter(x => x !== id), base = BASE_COND_BY.get(id);
+  if (base && condText(base) === condText(c)) delete blocchi[id]; else blocchi[id] = condText(c);
+  publishConds({ blocchi, rimossi }, D.id ? `${n} aggiornata` : `${n} aggiunta`).then(ok => { if (ok) closeDlg() });
 }
 const clean = v => String(v || '').replace(/[|\n\r`]/g, ' ').replace(/\s+/g, ' ').trim();
 function readCatForm() {
@@ -627,9 +806,10 @@ function addOffFood(p) {
 function unitsLine(f) { return f.units.slice(0, 2).map(u => `1 ${esc(u.one)} = ${fmtQ(u.g)} g · ${fmt(u.g * f.k / 100)} kcal`).join(' · ') }
 function foodCard(f) {
   const ed = ADMIN.me && f.cat;
+  const tag = f.man ? '<span class="tag">da te</span>' : f.conf ? '<span class="tag warn">in disaccordo col piano</span>' : '';
   return `<div class="food ${f.s}${ed ? ' editable' : ''}"${ed ? ` data-act="catedit" data-n="${esc(f.n)}" role="button" tabindex="0" aria-label="Modifica ${esc(f.n)} nel catalogo"` : ''}><div class="t"><strong>${esc(f.n)}</strong><span class="badge ${f.s}">${ST[f.s]}</span></div>
  <div class="small">${esc(f.r)}${f.p ? ' · <span class="muted">' + esc(f.p) + '</span>' : ''}</div>${f.note ? `<div class="small muted">${esc(f.note)}</div>` : ''}
- <div class="small muted">${fmt(f.k)} kcal/100 g${f.units.length ? ' · ' + unitsLine(f) : ''}</div></div>`
+ <div class="small muted fline"><span>${fmt(f.k)} kcal/100 g${f.units.length ? ' · ' + unitsLine(f) : ''}</span>${tag}<button class="linkbtn small mk" type="button" data-act="markfood" data-n="${esc(f.n)}">Segna</button></div></div>`
 }
 function menuHits(q) {
   const hits = [];
@@ -641,14 +821,18 @@ function menuHits(q) {
 function renderFoods() {
   const q = $('q').value.trim(), all = allFoods();
   const found = q ? all.filter(f => matches(f, q)) : all;
-  const shown = found.filter(f => S.filter === 'all' || f.s === S.filter || (S.filter === 'ok' && f.s === 'custom'));
+  const byCond = f => f.conds && f.conds.length, byMan = f => !!f.man;
+  if ((S.filter === 'cond' && !(SALUTE.cond || []).length) || (S.filter === 'man' && !Object.keys(SALUTE.man || {}).length)) S.filter = 'all';
+  const shown = found.filter(f => S.filter === 'all' || f.s === S.filter || (S.filter === 'ok' && f.s === 'custom') || (S.filter === 'cond' && byCond(f)) || (S.filter === 'man' && byMan(f)));
   const cnt = s => found.filter(f => f.s === s).length;
   $('fchips').innerHTML = [['all', 'Tutti', found.length], ['ok', 'Previsti', cnt('ok') + cnt('custom')], ['warn', 'Sconsigliati', cnt('warn')], ['no', 'Vietati', cnt('no')], ['none', 'Non indicati', cnt('none')]]
+    .concat((SALUTE.cond || []).length ? [['cond', 'Per le mie condizioni', found.filter(byCond).length]] : [])
+    .concat(Object.keys(SALUTE.man || {}).length ? [['man', 'Segnati da me', found.filter(byMan).length]] : [])
     .map(([k, l, n]) => `<button data-act="filter" data-f="${k}" aria-pressed="${S.filter === k}">${l} · ${n}</button>`).join('');
   let v = '';
   if (q) {
     const ex = exactOf(q, all) || (found.length === 1 ? found[0] : null);
-    if (ex) v = `<div class="verdict ${ex.s === 'custom' ? 'none' : ex.s}"><strong>${esc(ex.n)}: ${ST[ex.s].toLowerCase()}</strong>${esc(ex.r)}${ex.p ? '. Porzione nel piano: ' + esc(ex.p) : ''}${ex.note ? '<br><span class="small">' + esc(ex.note) + '</span>' : ''}${ex.s === 'none' ? `<br><span class="small">${PL ? 'Il tuo piano non lo indica: chiedi a chi ti segue.' : 'Carica il tuo piano per vedere se è previsto.'}</span>` : ''}</div>`;
+    if (ex) v = `<div class="verdict ${ex.s === 'custom' ? 'none' : ex.s}"><strong>${esc(ex.n)}: ${ST[ex.s].toLowerCase()}</strong>${esc(ex.r)}${ex.p ? '. Porzione nel piano: ' + esc(ex.p) : ''}${ex.note ? '<br><span class="small">' + esc(ex.note) + '</span>' : ''}${ex.s === 'none' ? `<br><span class="small">${PL ? 'Il tuo piano non lo indica: chiedi a chi ti segue.' : 'Carica il tuo piano per vedere se è previsto.'}</span>` : ''}<br><button class="btn small" type="button" data-act="markfood" data-n="${esc(ex.n)}">${ex.man ? 'Cambia la tua scelta' : 'Segna per me'}</button></div>`;
     else if (!found.length) v = `<div class="verdict none"><strong>Non è nel tuo piano né nell'enciclopedia</strong>Chiedi a chi ti segue se puoi mangiarlo. Puoi comunque aggiungerlo a un pasto con le sue kcal.</div>`;
     else v = `<p class="muted" style="margin:0">${found.length} alimenti contengono "${esc(q)}".</p>`;
     const hits = menuHits(q);
@@ -729,18 +913,25 @@ function proposals(date, mealId) {
     return a + (c >= fq.n ? 3 * (c - fq.n + 1) : -0.7 * Math.min(2, fq.n - c));
   }, 0);
   // Componenti a scelta (combinati), verdura e frutta (scelte senza ripetizioni), condimenti (fissi)
+  const stOf = n => (foodBy(n) || {}).s, dropped = [];
+  let filtered = false;
   const choice = comps.map((c, ci) => {
     let opts = c.options.map((o, oi) => ({ o, oi }));
+    const allowed = opts.filter(x => x.o.every(it => stOf(it.f) !== 'no'));
+    if (allowed.length < opts.length) filtered = true;
+    if (!allowed.length) { dropped.push(c.label || c.role); return null }
+    opts = allowed;
     if (c.role === 'amido' && F) { const f = opts.filter(x => x.o.length !== 1 || (F === 'primo') === PRIMO_FAM.includes(fam(x.o[0].f))); if (f.length) opts = f }
     if (c.role === 'frutta' || c.role === 'spuntino') { const f = opts.filter(x => x.o.every(it => inSeason(it.f, month))); if (f.length) opts = f }
     return { c, ci, opts };
-  });
+  }).filter(Boolean);
+  const warnN = items => items.filter(it => stOf(it.f) === 'warn').length;
   const combos = [[]];
   choice.filter(x => !GREEDY.includes(x.c.role) && x.c.role !== 'condimento').forEach(x => {
     const nxt = []; combos.forEach(cb => x.opts.forEach(op => { if (nxt.length < 3000) nxt.push(cb.concat([[x.ci, op]])) }));
     combos.splice(0, combos.length, ...nxt);
   });
-  const best = (opts) => opts.map(op => ({ op, s: op.o.reduce((a, it) => a + rep(it.f, 0.8) + (orig.has(norm(it.f)) ? 0.4 : 0), 0) + op.oi * 0.05 + jit() })).sort((a, b) => a.s - b.s)[0].op;
+  const best = (opts) => opts.map(op => ({ op, s: op.o.reduce((a, it) => a + rep(it.f, 0.8) + (orig.has(norm(it.f)) ? 0.4 : 0), 0) + op.oi * 0.05 + warnN(op.o) * 2 + jit() })).sort((a, b) => a.s - b.s)[0].op;
   const out = [];
   combos.forEach(cb => {
     const pick = new Map(cb);
@@ -748,7 +939,7 @@ function proposals(date, mealId) {
     const items = choice.flatMap(x => pick.get(x.ci).o.map(toIt));
     const kcal = kcalOf(items);
     const chosen = cb.map(([, op]) => op);
-    let s = fit(kcal) + freqScore(items) + jit() + chosen.reduce((a, op) => a + op.oi * 0.15, 0);
+    let s = fit(kcal) + freqScore(items) + jit() + chosen.reduce((a, op) => a + op.oi * 0.15, 0) + warnN(items) * 2;
     chosen.forEach(op => op.o.forEach(it => { s += rep(it.f, 2.5) + (orig.has(norm(it.f)) ? 1.5 : 0) }));
     const am = items.find(it => ['amido', 'patate'].includes(kindOf(it)));
     if (am && prevFam.has(fam(am.f))) s += 1.5;
@@ -763,7 +954,7 @@ function proposals(date, mealId) {
     list.push(p);
   });
   const minKcal = out.reduce((a, p) => Math.min(a, p.kcal), Infinity);
-  return { list: list.slice(0, 12), ctx: Object.assign(ctxBase, { protMissing, wc, prevFam, minKcal }) };
+  return { list: list.slice(0, 12), ctx: Object.assign(ctxBase, { protMissing, wc, prevFam, minKcal, filtered, dropped }) };
 }
 function reasons(p, ctx) {
   const r = [];
@@ -774,6 +965,10 @@ function reasons(p, ctx) {
   p.hits.forEach(fq => { const c = (ctx.wc.get(fq) || 0) + 1; r.push(`${fq.label}: con questa sono ${c} questa settimana (${fq.rule === 'almeno' ? 'almeno' : fq.rule === 'massimo' ? 'al massimo' : 'obiettivo'} ${fq.n}).`) });
   if (p.am && ctx.prevFam.size && !ctx.prevFam.has(fam(p.am))) r.push('Cambia il tipo di amido rispetto a quello già mangiato oggi.');
   if (ctx.fmt) r.push(ctx.fmt === 'primo' ? 'Formato primo: piatto unico con pasta, riso o cereali.' : 'Formato secondo: proteina con contorno, pane o patate.');
+  if (ctx.filtered) r.push('Ho escluso le opzioni con alimenti vietati per te.');
+  if (ctx.dropped && ctx.dropped.length) r.push('Nessuna opzione consentita per: ' + ctx.dropped.join(', ') + '. Chiedi a chi ti segue con cosa sostituirla.');
+  const w = p.items.filter(it => (foodBy(it.f) || {}).s === 'warn').map(it => it.f);
+  if (w.length) r.push('Contiene alimenti sconsigliati per te: ' + w.join(', ') + '.');
   r.push('Solo alternative indicate dal tuo piano, con le sue grammature.');
   return r;
 }
@@ -972,6 +1167,16 @@ $('dlg').addEventListener('submit', e => {
     const n = $('mN').value.trim(); if (!n) return;
     const ty = $('mT') ? $('mT').value : null;
     mutate(D.scope, D.key, ms => { if (D.mid) { const x = ms.find(y => y.id === D.mid); x.name = n; if (ty) x.type = ty } else ms.push({ id: uidGen(), name: n, items: [] }) }, null);
+  } else if (D.type === 'conds') {
+    SALUTE.cond = [...document.querySelectorAll('#dlgBody input[name=cond]:checked')].map(x => x.value);
+    closeDlg(); saveSalute(SALUTE.cond.length ? 'Condizioni salvate: ' + SALUTE.cond.length : 'Nessuna condizione attiva'); return;
+  } else if (D.type === 'mark') {
+    const all = allFoods(), f = D.n ? all.find(x => x.n === D.n) : exactOf($('mkQ').value.trim(), all);
+    if (!f) { $('mkErr').textContent = 'Scegli un alimento dall\'elenco.'; $('mkErr').hidden = false; return }
+    const sv = (document.querySelector('#dlgBody input[name=mkS]:checked') || {}).value || 'no';
+    SALUTE.man[norm(f.n)] = { n: f.n, s: sv, nota: clean($('mkN').value).slice(0, 120) };
+    closeDlg(); saveSalute(`${f.n}: ${ST[sv].toLowerCase()} per te`); return;
+  } else if (D.type === 'condedit') { submitCondEdit(D); return;
   } else if (D.type === 'cat') {
     const r = readCatForm(); if (r.err) { $('cErr').textContent = r.err; $('cErr').hidden = false; return }
     publishCatalog(catUpsert(CAT_EDIT, r.f, D.old), D.old ? `${r.f.n} aggiornato` : `${r.f.n} aggiunto al catalogo`).then(ok => { if (ok) closeDlg() });
@@ -986,6 +1191,14 @@ $('dlg').addEventListener('submit', e => {
 });
 $('dDel').addEventListener('click', () => {
   if (!dlg) return; const D = dlg;
+  if (D.type === 'mark') { const k = norm(D.n || $('mkQ').value); if (SALUTE.man[k]) { const n = SALUTE.man[k].n; delete SALUTE.man[k]; closeDlg(); saveSalute(n + ': scelta tolta') } return }
+  if (D.type === 'condedit') {
+    if (!D.confirm) { D.confirm = true; $('dDel').textContent = 'Elimina per tutti?'; return }
+    const blocchi = Object.assign({}, COND_EDIT.blocchi); delete blocchi[D.id];
+    const rimossi = (COND_EDIT.rimossi || []).filter(x => x !== D.id).concat(BASE_COND_BY.has(D.id) ? [D.id] : []);
+    const n = (condById.get(D.id) || {}).n || D.id;
+    publishConds({ blocchi, rimossi }, n + ' eliminata').then(ok => { if (ok) closeDlg() }); return;
+  }
   if (D.type === 'cat') {
     if (!D.confirm) { D.confirm = true; $('dDel').textContent = 'Elimina per tutti?'; return }
     publishCatalog(catRemove(CAT_EDIT, D.old), `${D.old} eliminato dal catalogo`).then(ok => { if (ok) closeDlg() }); return;
@@ -1232,7 +1445,9 @@ function renderAccount() {
   <div class="setgrid">
    <div class="card"><h3>Account</h3><div class="syncline"><i class="sdot" id="syncDot2"></i><span id="syncTxt">${esc(lastSync)}</span></div>${acc}</div>
    ${planCard()}
+   ${saluteCard()}
    ${catalogCard()}
+   ${condCardAdmin()}
    <div class="card"><h3>Dati personali</h3>
     <div class="three"><div><label for="sP">Peso (kg)</label><input type="number" id="sP" min="30" max="300" step="0.1" inputmode="decimal" value="${st.peso ?? ''}"></div>
     <div><label for="sH">Altezza (cm)</label><input type="number" id="sH" min="100" max="230" step="1" inputmode="numeric" value="${st.altezza ?? ''}"></div>
@@ -1247,7 +1462,7 @@ function renderAccount() {
    <div class="card"><h3>Aggiornamenti</h3><p class="small muted" style="margin-top:4px">Installata: versione ${esc(VER.version)}.</p>${upd}
     ${newer() ? '' : '<button class="btn" type="button" data-act="checkver">Controlla aggiornamenti</button>'}</div>
    <div class="card"><h3>Backup</h3>
-    <p class="small muted">Un file con obiettivi, menù, pasti salvati, alimenti tuoi e tutti i giorni registrati.</p>
+    <p class="small muted">Un file con obiettivi, piano, condizioni, menù, pasti salvati, alimenti tuoi e tutti i giorni registrati.</p>
     <div class="row2"><button class="btn" type="button" data-act="export">Scarica backup</button><button class="btn" type="button" data-act="copy">Copia backup</button>
     <label class="btn filebtn">Importa backup<input type="file" id="imp" accept="application/json,.json" hidden></label></div>
     <div id="impBox"></div></div>
@@ -1295,7 +1510,7 @@ $('authForm').addEventListener('submit', async e => {
 // All'uscita: via i dati in cache su questo dispositivo, si riparte dal login.
 function resetLocal() {
   try { Object.keys(localStorage).filter(k => k.startsWith('apz:')).forEach(k => localStorage.removeItem(k)) } catch (e) { }
-  S.settings = { kcal: 1800, water: 10, glass: 200 }; setPlan(null); S.week = defaultWeek(); S.custom = []; S.library = []; S.shop = { checked: {}, extra: [] }; S.days = {};
+  S.settings = { kcal: 1800, water: 10, glass: 200 }; setPlan(null); S.week = defaultWeek(); S.custom = []; S.library = []; S.shop = { checked: {}, extra: [] }; S.days = {}; SALUTE = { cond: [], man: {} }; rebuildFoods();
   loaded.clear(); undoStack = null; Object.assign(ADMIN, { known: false, exists: false, me: false });
 }
 async function startFirebase() {
@@ -1316,7 +1531,7 @@ async function buildBackup() {
   let days = lsDays();
   if (B.kind !== 'local') { try { days = Object.assign(days, await B.listDays()) } catch (e) { } }
   Object.assign(days, S.days);
-  return JSON.stringify({ app: 'appanzay', version: 2, exportedAt: new Date().toISOString(), settings: S.settings, plan: S.plan, week: S.week, custom: S.custom, library: S.library, shop: S.shop, days }, null, 1);
+  return JSON.stringify({ app: 'appanzay', version: 2, exportedAt: new Date().toISOString(), settings: S.settings, plan: S.plan, week: S.week, custom: S.custom, library: S.library, shop: S.shop, salute: SALUTE, days }, null, 1);
 }
 let pendingImport = null;
 function readImport(file) {
@@ -1339,6 +1554,7 @@ function doImport() {
   if (Array.isArray(j.library)) { S.library = j.library; save('meals') }
   if (j.plan) { setPlan(j.plan); save('plan') }
   if (j.shop) { S.shop = Object.assign({ checked: {}, extra: [] }, j.shop); save('shop') }
+  if (j.salute) { applyDoc('salute', j.salute); save('salute') }
   Object.entries(j.days || {}).forEach(([d, v]) => { S.days[d] = Object.assign({ water: 0, eaten: {}, sym: null, note: '' }, v); loaded.add(d); save('day:' + d) });
   pendingImport = null; renderDatalist(); render(); toast('Backup importato', false);
 }
@@ -1426,6 +1642,14 @@ document.addEventListener('click', async e => {
   else if (a === 'closedlg') closeDlg();
   else if (a === 'catedit') openCatEdit(b.dataset.n);
   else if (a === 'catnew') openCatEdit(null);
+  else if (a === 'condpick') openCondPick();
+  else if (a === 'markfood') openMark(b.dataset.n || $('q').value.trim() && (exactOf($('q').value.trim(), allFoods()) || {}).n || '');
+  else if (a === 'markedit') openMark(b.dataset.n);
+  else if (a === 'markdel') { const m = SALUTE.man[b.dataset.k]; if (m) { delete SALUTE.man[b.dataset.k]; saveSalute(m.n + ': scelta tolta') } }
+  else if (a === 'mkpick') { dlg.n = b.dataset.n; $('mkQ').value = b.dataset.n; const m = SALUTE.man[norm(b.dataset.n)]; if (m) { const r = document.querySelector(`#dlgBody input[name=mkS][value=${m.s}]`); if (r) r.checked = true; $('mkN').value = m.nota || '' } $('dDel').hidden = !m; markList() }
+  else if (a === 'condedit') openCondEdit(b.dataset.id);
+  else if (a === 'condnew') openCondEdit(null);
+  else if (a === 'condrestore') { if (!dlg || !dlg.id) return; const blocchi = Object.assign({}, COND_EDIT.blocchi); delete blocchi[dlg.id]; const n = (condById.get(dlg.id) || {}).n; if (await publishConds({ blocchi, rimossi: (COND_EDIT.rimossi || []).filter(x => x !== dlg.id) }, n + ': lista originale ripristinata')) closeDlg() }
   else if (a === 'gocat') { location.hash = 'alimenti'; window.scrollTo(0, 0) }
   else if (a === 'catimport') openCatImport();
   else if (a === 'catimpgo') { if (!dlg || !dlg.rows.length) return; const rows = dlg.rows; b.disabled = true; const st = rows.reduce((acc, f) => catUpsert(acc, f, null), CAT_EDIT); if (await publishCatalog(st, rows.length + (rows.length === 1 ? ' alimento importato' : ' alimenti importati'))) closeDlg(); else b.disabled = false }
@@ -1589,7 +1813,7 @@ function renderDatalist() { $('foodlist').innerHTML = allFoods().map(f => `<opti
 
 /* ---------- Avvio ---------- */
 if (window.APZ_FIREBASE && !(window.claude && window.claude.use)) setGate('loading'); else setGate('in');
-['plan', 'settings', 'week', 'foods', 'meals', 'shop'].forEach(k => applyDoc(k, lsGet(k)));
+['plan', 'settings', 'week', 'foods', 'meals', 'shop', 'salute'].forEach(k => applyDoc(k, lsGet(k)));
 applyDoc('day:' + S.date, lsGet('day:' + S.date));
 if (!S.week) S.week = defaultWeek();
 renderDatalist(); render(); setSync(syncLabel());
