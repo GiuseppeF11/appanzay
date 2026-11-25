@@ -334,20 +334,33 @@ function syncLabel() {
   if (window.APZ_FIREBASE) return 'Accedi per salvare nel database';
   return 'Salvataggio solo su questo browser';
 }
+/* Chiavi non ancora salvate online: servono a non perdere dati all'uscita dall'account */
+const unsynced = new Set();
+function pushKey(key, adapter) {
+  delete timers[key];
+  const body = clone(dataFor(key));
+  setSync('Salvataggio…');
+  return chains[key] = (chains[key] || Promise.resolve())
+    .then(() => adapter.set(key, body))
+    .then(() => { if (adapter === B) { unsynced.delete(key); setSync(syncLabel()) } })
+    .catch(e => setSync(e && e.code === 'quota_exceeded' ? 'Spazio esaurito: salvato solo su questo browser' : 'Non salvato online: riprovo alla prossima modifica'));
+}
 function save(key) {
   lsSet(key, dataFor(key));
   if (B.kind === 'local') return;
+  unsynced.add(key);
   clearTimeout(timers[key]);
   const adapter = B;
-  timers[key] = setTimeout(() => {
-    const body = clone(dataFor(key));
-    setSync('Salvataggio…');
-    chains[key] = (chains[key] || Promise.resolve())
-      .then(() => adapter.set(key, body))
-      .then(() => setSync(syncLabel()))
-      .catch(e => setSync(e && e.code === 'quota_exceeded' ? 'Spazio esaurito: salvato solo su questo browser' : 'Non salvato online: riprovo alla prossima modifica'));
-  }, 500);
+  timers[key] = setTimeout(() => pushKey(key, adapter), 500);
 }
+/* Prima di uscire: manda subito i salvataggi in attesa e riprova quelli falliti */
+async function flushSaves() {
+  if (B.kind === 'local') return;
+  Object.keys(timers).forEach(k => clearTimeout(timers[k]));
+  await Promise.all([...unsynced].map(k => pushKey(k, B)));
+}
+const KEY_NAME = { plan: 'il piano', week: 'il menù della settimana', settings: 'obiettivi e dati personali', foods: 'i tuoi alimenti', meals: 'i pasti salvati', shop: 'la spesa', salute: 'condizioni e alimenti segnati' };
+async function doLogout() { resetLocal(); unsynced.clear(); await FB.logout(); location.hash = 'oggi' }
 async function fetchDoc(key) {
   if (B.kind !== 'local') {
     try { const v = await B.get(key); if (v) { applyDoc(key, v); lsSet(key, v) } return } catch (e) { }
@@ -1678,7 +1691,18 @@ document.addEventListener('click', async e => {
   else if (a === 'google') { if (!FB) return; showAuthMsg(''); try { await FB.google() } catch (err) { showAuthMsg(authMsg(err)) } }
   else if (a === 'lmode') setLoginMode(b.dataset.v);
   else if (a === 'ereset') { const em = $('aE').value.trim(); try { await FB.resetPassword(em); showAuthMsg('Ti ho inviato un\'email per reimpostare la password.') } catch (err) { showAuthMsg(authMsg(err)) } }
-  else if (a === 'logout') { resetLocal(); await FB.logout(); location.hash = 'oggi' }
+  else if (a === 'logout') {
+    b.disabled = true; await flushSaves(); b.disabled = false;
+    if (unsynced.size) {
+      const names = [...new Set([...unsynced].map(k => k.startsWith('day:') ? 'alcuni giorni registrati' : KEY_NAME[k] || k))];
+      dlg = { type: 'logout' };
+      showDlg(`<h2>Dati non ancora online</h2><p>Non riesco a salvare online ${esc(names.join(', '))}. Se esci adesso, su questo dispositivo vanno persi.</p><p class="small muted">Controlla la connessione e riprova, oppure scarica un backup prima di uscire.</p>
+       <div class="acts col"><button class="btn pri" type="button" data-act="export">Scarica backup</button><button class="btn" type="button" data-act="closedlg">Resta collegato</button><button class="btn ghost bad" type="button" data-act="logoutforce">Esci comunque</button></div>`, { noActs: true });
+      return;
+    }
+    await doLogout();
+  }
+  else if (a === 'logoutforce') { closeDlg(); await doLogout() }
   else if (a === 'export') {
     const txt = await buildBackup();
     try { const url = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); const l = document.createElement('a'); l.href = url; l.download = 'appanzay-backup-' + ymd(new Date()) + '.json'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000); toast('Backup scaricato. Se non parte, usa "Copia backup".', false) }
