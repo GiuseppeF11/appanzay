@@ -344,3 +344,5 @@ body.gate-loading>header,body.gate-loading>main,body.gate-loading>.updbar,body.g
 .condadm .cg{margin:8px 0 0}
 #ceR{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
 .verdict .btn.small{margin-top:8px;min-height:36px}
+.dlg .acts.col{flex-direction:column;align-items:stretch}
+.btn.bad{color:var(--no)}

@@ -29,6 +29,12 @@ export async function connect(config) {
   } catch (e) {
     db = F.getFirestore(app);
   }
+  // Firestore non accetta liste dentro liste (piano: equivalenze; settimana: 7 giorni di pasti).
+  // Quei documenti si salvano come testo JSON in un solo campo e si ricompongono alla lettura.
+  const hasNested = (v, inArr) => Array.isArray(v) ? (inArr || v.some(x => hasNested(x, true)))
+    : v && typeof v === 'object' ? Object.values(v).some(x => hasNested(x, false)) : false;
+  const enc = d => hasNested(d, false) ? { _json: JSON.stringify(d) } : d;
+  const dec = v => v && typeof v._json === 'string' ? JSON.parse(v._json) : v;
   const ref = (uid, key) => key.startsWith('day:')
     ? F.doc(db, 'users', uid, 'days', key.slice(4))
     : F.doc(db, 'users', uid, 'meta', key);
@@ -42,18 +48,18 @@ export async function connect(config) {
     logout: () => A.signOut(auth),
     async get(uid, key) {
       const s = await F.getDoc(ref(uid, key));
-      return s.exists() ? s.data() : null;
+      return s.exists() ? dec(s.data()) : null;
     },
-    set: (uid, key, data) => F.setDoc(ref(uid, key), data),
+    set: (uid, key, data) => F.setDoc(ref(uid, key), enc(data)),
     async getShared(id) {
       const s = await F.getDoc(F.doc(db, 'catalogo', id));
-      return s.exists() ? s.data() : null;
+      return s.exists() ? dec(s.data()) : null;
     },
-    setShared: (id, data) => F.setDoc(F.doc(db, 'catalogo', id), data),
+    setShared: (id, data) => F.setDoc(F.doc(db, 'catalogo', id), enc(data)),
     async listDays(uid) {
       const qs = await F.getDocs(F.collection(db, 'users', uid, 'days'));
       const out = {};
-      qs.forEach(d => { out[d.id] = d.data(); });
+      qs.forEach(d => { out[d.id] = dec(d.data()); });
       return out;
     },
   };
